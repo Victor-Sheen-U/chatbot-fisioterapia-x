@@ -1,0 +1,20 @@
+# Evidencia 07: Aislamiento de dos sesiones y reinicio en app_gradio.py (LLM simulado, sin Groq)
+Fecha y hora: 2026-10-22T20:28:00-05:00
+Qué se probaba: Comprobar a nivel de funciones de app_gradio.py que dos estados creados con nuevo_estado() mantienen historiales y planes pendientes independientes al invocar enviar(), y que reiniciar() deja únicamente el mensaje 'system' (LLM simulado, sin Groq, mediante unittest.mock.patch sobre procesar_turno). Nota: la prueba interactiva en dos ventanas de navegador con Groq real queda documentada como prueba manual.
+Comando ejecutado: ./.venv/bin/python remover_backup/herramientas/simular_sesiones_gradio.py
+----------------------------------------------------------------------
+1) Estado inicial de ambas sesiones:
+   Sesión 1 mensajes en historial: 1 (rol=system)
+   Sesión 2 mensajes en historial: 1 (rol=system)
+
+2) Tras enviar un turno distinto en cada sesión (con procesar_turno simulado vía unittest.mock.patch):
+   Sesión 1 -> aviso: 'Revisa el resumen y confirma o descarta.' | pendiente: Laura Pérez (evaluacion)
+   Sesión 2 -> aviso: 'Listo.' | pendiente: None
+   Sesión 1 último mensaje usuario: Hola, soy Laura Pérez y quiero valoración el 2026-10-28 a las 09:00
+   Sesión 2 último mensaje usuario: Soy Andrés Gómez, qué horarios hay para deportiva el 2026-10-29
+   ✓ Verificado: Las dos sesiones mantienen historiales, pantallas y operaciones pendientes completamente separados.
+
+3) Al ejecutar reiniciar() sobre la Sesión 1:
+   Sesión 1 reiniciada -> aviso: 'Conversación reiniciada.' | mensajes en historial: 1 (rol=system) | pantalla: [] | pendiente: None
+   Sesión 2 intacta    -> mensajes en historial: 3 | último usuario: 'Soy Andrés Gómez, qué horarios hay para deportiva el 2026-10-29'
+   ✓ Verificado: reiniciar() deja únicamente el mensaje 'system' en la sesión reiniciada sin alterar la otra sesión.

@@ -1,0 +1,49 @@
+# Evidencia 03: Rechazo de intervalos ocupados (HTTP 409), independencia por profesional y adyacencia exacta
+Fecha y hora: 2026-10-22T20:27:17-05:00
+Qué se probaba: 1) Crear Reserva A (evaluacion, 60 min, 10:00 a 11:00 con mariana) -> 201. 2) Intentar Reserva B que se cruza (deportiva, 45 min, 10:30 con mariana) -> 409 Conflict. 3) Misma hora (10:30) con otra profesional (valeria) -> 201 Created. 4) Reserva adyacente exacta con mariana a las 11:00 (justo cuando termina la de 10:00-11:00) -> 201 Created.
+Comandos ejecutados:
+  curl -sS -i -X POST http://127.0.0.1:8012/citas ... (Reserva A: mariana 10:00, 60 min)
+  curl -sS -i -X POST http://127.0.0.1:8012/citas ... (Reserva B cruce: mariana 10:30, 45 min -> 409)
+  curl -sS -i -X POST http://127.0.0.1:8012/citas ... (Reserva C otro profesional: valeria 10:30, 45 min -> 201)
+  curl -sS -i -X POST http://127.0.0.1:8012/citas ... (Reserva D adyacente: mariana 11:00, 45 min -> 201)
+----------------------------------------------------------------------
+>>> 1) Reserva A: Mariana el 2026-10-29 a las 10:00 (evaluacion, 60 min -> ocupa 10:00 a 11:00)
+HTTP/1.1 201 Created
+date: Fri, 23 Oct 2026 01:27:16 GMT
+server: uvicorn
+content-length: 398
+content-type: application/json
+vary: Origin
+
+{"cliente":"Paciente Turno A","servicio":"evaluacion","fecha":"2026-10-29","hora":"10:00","fisioterapeuta":"mariana","telefono":null,"motivo_consulta":null,"codigo":"VF-1E8A68B1F8","estado":"activa","precio_cop":80000,"duracion_minutos":60,"fisioterapeuta_asignado":"mariana","creada_en":"2026-10-22T20:27:17.081642-05:00","cancelada_en":null,"reprogramada_en":null,"historial_reprogramaciones":[]}
+
+
+>>> 2) Reserva B (Cruce con Mariana a las 10:30, deportiva 45 min -> se solapa [10:30, 11:15) con [10:00, 11:00) -> Debe responder HTTP 409)
+HTTP/1.1 409 Conflict
+date: Fri, 23 Oct 2026 01:27:16 GMT
+server: uvicorn
+content-length: 91
+content-type: application/json
+vary: Origin
+
+{"detail":"El horario o profesional seleccionado no está disponible en esa fecha y hora."}
+
+>>> 3) Reserva C (Misma hora 10:30 pero con Valeria -> No hay cruce porque es otra profesional -> Debe responder HTTP 201)
+HTTP/1.1 201 Created
+date: Fri, 23 Oct 2026 01:27:16 GMT
+server: uvicorn
+content-length: 403
+content-type: application/json
+vary: Origin
+
+{"cliente":"Paciente Turno Valeria","servicio":"deportiva","fecha":"2026-10-29","hora":"10:30","fisioterapeuta":"valeria","telefono":null,"motivo_consulta":null,"codigo":"VF-09B7D14F6A","estado":"activa","precio_cop":70000,"duracion_minutos":45,"fisioterapeuta_asignado":"valeria","creada_en":"2026-10-22T20:27:17.112904-05:00","cancelada_en":null,"reprogramada_en":null,"historial_reprogramaciones":[]}
+
+>>> 4) Reserva D (Adyacente exacta con Mariana a las 11:00 -> empieza exactamente cuando termina Reserva A -> Debe responder HTTP 201)
+HTTP/1.1 201 Created
+date: Fri, 23 Oct 2026 01:27:16 GMT
+server: uvicorn
+content-length: 405
+content-type: application/json
+vary: Origin
+
+{"cliente":"Paciente Turno Adyacente","servicio":"deportiva","fecha":"2026-10-29","hora":"11:00","fisioterapeuta":"mariana","telefono":null,"motivo_consulta":null,"codigo":"VF-6E645E3D6E","estado":"activa","precio_cop":70000,"duracion_minutos":45,"fisioterapeuta_asignado":"mariana","creada_en":"2026-10-22T20:27:17.118646-05:00","cancelada_en":null,"reprogramada_en":null,"historial_reprogramaciones":[]}

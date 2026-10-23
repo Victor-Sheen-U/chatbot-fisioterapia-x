@@ -1,0 +1,38 @@
+# Evidencia 01: Consulta de catálogo de servicios y disponibilidad vía FastAPI
+Fecha y hora: 2026-10-22T20:27:16-05:00
+Qué se probaba: Que los endpoints GET /servicios y GET /disponibilidad respondan con el catálogo oficial de 6 servicios de clinica.json y calculen los turnos libres descontando reservas activas por fisioterapeuta.
+Comandos ejecutados:
+  uvicorn main:app --host 127.0.0.1 --port 8012
+  curl -sS -i http://127.0.0.1:8012/servicios
+  curl -sS -i 'http://127.0.0.1:8012/disponibilidad?fecha=2026-10-23&servicio=evaluacion&fisioterapeuta=mariana'
+  curl -sS -i 'http://127.0.0.1:8012/disponibilidad?fecha=2026-10-23&servicio=evaluacion'
+----------------------------------------------------------------------
+>>> 1) GET /servicios
+HTTP/1.1 200 OK
+date: Fri, 23 Oct 2026 01:27:16 GMT
+server: uvicorn
+content-length: 1364
+content-type: application/json
+vary: Origin
+
+{"evaluacion":{"nombre":"Valoración Inicial y Diagnóstico Funcional","precio_cop":80000,"duracion_minutos":60,"descripcion":"Evaluación postural, goniometría articular, pruebas ortopédicas y plan de tratamiento personalizado."},"deportiva":{"nombre":"Fisioterapia Deportiva y Readaptación","precio_cop":70000,"duracion_minutos":45,"descripcion":"Recuperación de esguinces, desgarros musculares, tendinopatías y retorno al rendimiento deportivo."},"traumatologica":{"nombre":"Rehabilitación Traumatológica y Postquirúrgica","precio_cop":65000,"duracion_minutos":45,"descripcion":"Recuperación de fracturas, luxaciones, prótesis articulares y lesiones de ligamentos o meniscos."},"puncion_seca":{"nombre":"Terapia Manual y Punción Seca","precio_cop":75000,"duracion_minutos":45,"descripcion":"Técnica invasiva con agujas de acupuntura para desactivación de puntos gatillo miofasciales y contracturas severas."},"postural":{"nombre":"Reeducación Postural Global (RPG) y Columna","precio_cop":60000,"duracion_minutos":45,"descripcion":"Corrección biomecánica de hiperlordosis, escoliosis, cervicalgia y lumbalgia mecánica."},"neurologica":{"nombre":"Rehabilitación Neurológica Integral","precio_cop":85000,"duracion_minutos":60,"descripcion":"Terapia para pacientes con secuelas de ACV, parálisis facial, Parkinson, esclerosis o neuropatías."}}
+
+>>> 2) GET /disponibilidad?fecha=2026-10-23&servicio=evaluacion&fisioterapeuta=mariana (Mariana tiene cita activa 09:00-10:00 en datos semilla, por lo que 08:30 y 09:00 no aparecen)
+HTTP/1.1 200 OK
+date: Fri, 23 Oct 2026 01:27:16 GMT
+server: uvicorn
+content-length: 428
+content-type: application/json
+vary: Origin
+
+{"fecha":"2026-10-23","servicio":"evaluacion","fisioterapeuta":"mariana","horarios_disponibles":["07:00","07:30","08:00","10:00","10:30","11:00","11:30","12:00","12:30","13:00","13:30","14:00","14:30","15:00","15:30","16:00","16:30","17:00","17:30","18:00"],"horas":["07:00","07:30","08:00","10:00","10:30","11:00","11:30","12:00","12:30","13:00","13:30","14:00","14:30","15:00","15:30","16:00","16:30","17:00","17:30","18:00"]}
+
+>>> 3) GET /disponibilidad?fecha=2026-10-23&servicio=evaluacion (Cualquier fisioterapeuta: 09:00 sí aparece porque Carlos está libre a las 09:00)
+HTTP/1.1 200 OK
+date: Fri, 23 Oct 2026 01:27:16 GMT
+server: uvicorn
+content-length: 479
+content-type: application/json
+vary: Origin
+
+{"fecha":"2026-10-23","servicio":"evaluacion","fisioterapeuta":"cualquiera","horarios_disponibles":["07:00","07:30","08:00","08:30","09:00","09:30","10:00","10:30","11:00","11:30","12:00","12:30","13:00","13:30","14:00","14:30","15:00","15:30","16:00","16:30","17:00","17:30","18:00"],"horas":["07:00","07:30","08:00","08:30","09:00","09:30","10:00","10:30","11:00","11:30","12:00","12:30","13:00","13:30","14:00","14:30","15:00","15:30","16:00","16:30","17:00","17:30","18:00"]}

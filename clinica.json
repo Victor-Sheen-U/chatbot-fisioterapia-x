@@ -1,0 +1,131 @@
+{
+  "nombre": "VLFisioterapia · Centro Integral de Fisioterapia y Rehabilitación",
+  "datos_ficticios": true,
+  "ubicacion": "Calle 15 Norte # 12-45, Consultorio 302, Edificio Salud y Vida, Armenia, Quindío (dirección ficticia)",
+  "telefono": "+57 300 987 6543",
+  "whatsapp_humano": "+57 311 234 5678",
+  "zona_horaria": "America/Bogota",
+  "paso_minutos": 30,
+  "horarios": {
+    "0": ["07:00", "19:00"],
+    "1": ["07:00", "19:00"],
+    "2": ["07:00", "19:00"],
+    "3": ["07:00", "19:00"],
+    "4": ["07:00", "19:00"],
+    "5": ["08:00", "14:00"]
+  },
+  "fisioterapeutas": {
+    "mariana": {
+      "nombre": "Lic. Mariana Ruiz",
+      "especialidad": "Fisioterapia Deportiva y Traumatología",
+      "registro_profesional": "FT-84920-COL",
+      "servicios_asignados": ["evaluacion", "deportiva", "traumatologica", "puncion_seca"]
+    },
+    "carlos": {
+      "nombre": "Lic. Carlos Gómez",
+      "especialidad": "Rehabilitación Neurológica y Terapia Manual",
+      "registro_profesional": "FT-71234-COL",
+      "servicios_asignados": ["evaluacion", "neurologica", "puncion_seca", "postural"]
+    },
+    "valeria": {
+      "nombre": "Lic. Valeria Torres",
+      "especialidad": "Reeducación Postural y Dolor Crónico",
+      "registro_profesional": "FT-99312-COL",
+      "servicios_asignados": ["evaluacion", "postural", "traumatologica", "deportiva"]
+    }
+  },
+  "servicios": {
+    "evaluacion": {
+      "nombre": "Valoración Inicial y Diagnóstico Funcional",
+      "precio_cop": 80000,
+      "duracion_minutos": 60,
+      "descripcion": "Evaluación postural, goniometría articular, pruebas ortopédicas y plan de tratamiento personalizado."
+    },
+    "deportiva": {
+      "nombre": "Fisioterapia Deportiva y Readaptación",
+      "precio_cop": 70000,
+      "duracion_minutos": 45,
+      "descripcion": "Recuperación de esguinces, desgarros musculares, tendinopatías y retorno al rendimiento deportivo."
+    },
+    "traumatologica": {
+      "nombre": "Rehabilitación Traumatológica y Postquirúrgica",
+      "precio_cop": 65000,
+      "duracion_minutos": 45,
+      "descripcion": "Recuperación de fracturas, luxaciones, prótesis articulares y lesiones de ligamentos o meniscos."
+    },
+    "puncion_seca": {
+      "nombre": "Terapia Manual y Punción Seca",
+      "precio_cop": 75000,
+      "duracion_minutos": 45,
+      "descripcion": "Técnica invasiva con agujas de acupuntura para desactivación de puntos gatillo miofasciales y contracturas severas."
+    },
+    "postural": {
+      "nombre": "Reeducación Postural Global (RPG) y Columna",
+      "precio_cop": 60000,
+      "duracion_minutos": 45,
+      "descripcion": "Corrección biomecánica de hiperlordosis, escoliosis, cervicalgia y lumbalgia mecánica."
+    },
+    "neurologica": {
+      "nombre": "Rehabilitación Neurológica Integral",
+      "precio_cop": 85000,
+      "duracion_minutos": 60,
+      "descripcion": "Terapia para pacientes con secuelas de ACV, parálisis facial, Parkinson, esclerosis o neuropatías."
+    }
+  },
+  "seguros_convenios": [
+    "SURA EPS y Medicina Prepagada (requiere orden médica y autorización previa)",
+    "Colmédica Medicina Prepagada (acceso con bono o carné vigente)",
+    "Seguros Bolívar (póliza de salud con orden médica del traumatólogo)",
+    "Sanitas Prepagada (convenio de atención preferencial)",
+    "Particulares (pago con tarjeta débito, crédito, transferencia bancaria, PSE o efectivo)"
+  ],
+  "requisitos_consulta": [
+    "Asistir con ropa deportiva o cómoda (pantaloneta, lycra o camiseta sin mangas según zona a tratar).",
+    "Traer orden médica y autorización física o digital si asiste por convenio/seguro.",
+    "Llevar exámenes diagnósticos recientes: radiografías, resonancias magnéticas, ecografías o tomografías.",
+    "Llegar con 10 minutos de anticipación para el registro de signos vitales e historia clínica.",
+    "Si tiene dolor agudo severo o fiebre superior a 38°C, informar a recepción antes de iniciar."
+  ],
+  "politicas_citas": {
+    "cancelacion_reprogramacion": "Debe realizarse con mínimo 2 horas de anticipación para liberar el turno al siguiente paciente.",
+    "tolerancia": "Tolerancia máxima de 10 minutos. Después de ese tiempo la sesión se reduce para no afectar al siguiente turno.",
+    "confirmacion": "Toda reserva, reprogramación o cancelación exige confirmación explícita (CONFIRMAR) del paciente."
+  },
+  "faq": [
+    {
+      "pregunta": "¿Qué tratamientos y servicios ofrecen?",
+      "respuesta": "Ofrecemos Valoración Inicial, Fisioterapia Deportiva, Rehabilitación Traumatológica/Postquirúrgica, Punción Seca y Terapia Manual, Reeducación Postural Global (RPG) y Rehabilitación Neurológica."
+    },
+    {
+      "pregunta": "¿Cuáles son los precios y duración de las sesiones?",
+      "respuesta": "La valoración inicial cuesta $80.000 COP (60 min). Las sesiones terapéuticas oscilan entre $60.000 y $85.000 COP (duración entre 45 y 60 min según el tratamiento)."
+    },
+    {
+      "pregunta": "¿Aceptan seguros de salud o medicina prepagada?",
+      "respuesta": "Sí, tenemos convenio con SURA, Colmédica, Seguros Bolívar y Sanitas Prepagada. Para usarlos es indispensable presentar orden médica y autorización vigente."
+    },
+    {
+      "pregunta": "¿Dónde están ubicados y cuál es el horario de atención?",
+      "respuesta": "Estamos en Calle 15 Norte # 12-45, Consultorio 302, Edificio Salud y Vida en Armenia. Horarios: Lunes a Viernes de 07:00 a 19:00 y Sábados de 08:00 a 14:00. Domingos y festivos cerrado."
+    },
+    {
+      "pregunta": "¿Qué debo llevar a la primera cita?",
+      "respuesta": "Ropa cómoda/deportiva, documento de identidad, orden médica/autorización de seguro (si aplica) y exámenes de imagen recientes (radiografías o resonancias)."
+    },
+    {
+      "pregunta": "¿Cómo cancelo o reprogramo mi cita?",
+      "respuesta": "Puedes consultar, cancelar o reprogramar directamente con el bot escribiendo tu código de cita (ej. VF-...) con al menos 2 horas de anticipación."
+    },
+    {
+      "pregunta": "¿Atienden urgencias médicas hospitalarias?",
+      "respuesta": "No atendemos urgencias hospitalarias vitales ni fracturas abiertas agudas sin inmovilizar. En casos de emergencia o sospecha de fractura no evaluada, acude inmediatamente a un centro de urgencias."
+    }
+  ],
+  "derivacion_humana": {
+    "descripcion": "Transferencia a recepción o especialista para casos clínicos complejos, dudas sobre seguros, banderas rojas o atención personalizada.",
+    "telefono": "+57 300 987 6543 (Línea directa recepción)",
+    "whatsapp": "+57 311 234 5678",
+    "url_whatsapp": "https://wa.me/573112345678?text=Hola,%20solicito%20atenci%C3%B3n%20con%20recepci%C3%B3n%20m%C3%A9dica%20de%20VLFisioterapia",
+    "horario": "Lunes a Viernes 07:00 - 19:00, Sábados 08:00 - 14:00"
+  }
+}

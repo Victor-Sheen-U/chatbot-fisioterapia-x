@@ -1,0 +1,70 @@
+# Evidencia 06: Manejo de errores controlados en la API (404, 422, 400)
+Fecha y hora: 2026-10-22T20:27:19-05:00
+Qué se probaba: Que la API devuelva códigos HTTP claros y mensajes explicativos ante entradas inválidas o reglas del negocio incumplidas, sin corromper la base de datos ni caer el servidor.
+Comandos ejecutados:
+  1. Servicio inexistente -> POST /citas con servicio='acupuntura_laser' (HTTP 422)
+  2. Código de cita inexistente -> GET /citas/VF-NOEXISTE99 (HTTP 404)
+  3. Fecha en el pasado -> POST /citas con fecha='2020-05-10' (HTTP 422)
+  4. Hora fuera del horario de la clínica -> POST /citas con hora='21:00' (HTTP 422)
+  5. Cuerpo incompleto / sin confirmación -> POST /citas con confirmado=false (HTTP 422)
+  6. Intentar reprogramar una cita ya cancelada (VF-1E8A68B1F8) -> PATCH /citas/VF-1E8A68B1F8/reprogramar (HTTP 400)
+----------------------------------------------------------------------
+>>> 1) Servicio inexistente (HTTP 422):
+HTTP/1.1 422 Unprocessable Content
+date: Fri, 23 Oct 2026 01:27:18 GMT
+server: uvicorn
+content-length: 134
+content-type: application/json
+vary: Origin
+
+{"detail":"Servicio no reconocido. Tratamientos válidos: evaluacion, deportiva, traumatologica, puncion_seca, postural, neurologica"}
+
+>>> 2) Código de cita inexistente (HTTP 404):
+HTTP/1.1 404 Not Found
+date: Fri, 23 Oct 2026 01:27:18 GMT
+server: uvicorn
+content-length: 71
+content-type: application/json
+vary: Origin
+
+{"detail":"No se encontró ninguna cita con el código VF-NOEXISTE99."}
+
+>>> 3) Fecha pasada (HTTP 422):
+HTTP/1.1 422 Unprocessable Content
+date: Fri, 23 Oct 2026 01:27:18 GMT
+server: uvicorn
+content-length: 73
+content-type: application/json
+vary: Origin
+
+{"detail":"La fecha seleccionada ya pasó. Seleccione una fecha futura."}
+
+>>> 4) Hora fuera de horario laboral (21:00, cierre 19:00 -> HTTP 422):
+HTTP/1.1 422 Unprocessable Content
+date: Fri, 23 Oct 2026 01:27:18 GMT
+server: uvicorn
+content-length: 70
+content-type: application/json
+vary: Origin
+
+{"detail":"La atención debe terminar dentro del horario del negocio"}
+
+>>> 5) Cuerpo inválido / sin confirmación explícita (HTTP 422):
+HTTP/1.1 422 Unprocessable Content
+date: Fri, 23 Oct 2026 01:27:18 GMT
+server: uvicorn
+content-length: 134
+content-type: application/json
+vary: Origin
+
+{"detail":[{"type":"literal_error","loc":["body","confirmado"],"msg":"Input should be True","input":false,"ctx":{"expected":"True"}}]}
+
+>>> 6) Reprogramar una cita en estado 'cancelada' (VF-1E8A68B1F8 -> HTTP 400):
+HTTP/1.1 400 Bad Request
+date: Fri, 23 Oct 2026 01:27:18 GMT
+server: uvicorn
+content-length: 56
+content-type: application/json
+vary: Origin
+
+{"detail":"No se puede reprogramar una cita cancelada."}

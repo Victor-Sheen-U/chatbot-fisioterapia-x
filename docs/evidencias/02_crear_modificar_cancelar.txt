@@ -1,0 +1,107 @@
+# Evidencia 02: Ciclo completo Crear (POST), Consultar (GET), Reprogramar (PATCH) y Cancelar (DELETE) con verificación en SQLite
+Fecha y hora: 2026-10-22T20:27:16-05:00
+Qué se probaba: Crear una reserva nueva en FastAPI (201), consultarla por su código VF-..., reprogramarla a una nueva hora (200) verificando historial_reprogramaciones, y cancelarla con confirmado=true (200), comprobando tras cada paso el estado real de la fila en SQLite.
+Comandos ejecutados:
+  curl -sS -i -X POST http://127.0.0.1:8012/citas -H 'Content-Type: application/json' -d '{"cliente":"Paciente Evidencia 02","servicio":"deportiva","fecha":"2026-10-28","hora":"08:00","fisioterapeuta":"mariana","confirmado":true}'
+  curl -sS -i http://127.0.0.1:8012/citas/<CODIGO>
+  curl -sS -i -X PATCH http://127.0.0.1:8012/citas/<CODIGO>/reprogramar -H 'Content-Type: application/json' -d '{"nueva_fecha":"2026-10-28","nueva_hora":"10:30","confirmado":true}'
+  curl -sS -i -X DELETE 'http://127.0.0.1:8012/citas/<CODIGO>?confirmado=true'
+  python -c "import sqlite3, json; ... SELECT * FROM reservas WHERE codigo=<CODIGO>"
+----------------------------------------------------------------------
+>>> PASO 1: Crear cita (POST /citas)
+HTTP/1.1 201 Created
+date: Fri, 23 Oct 2026 01:27:16 GMT
+server: uvicorn
+content-length: 402
+content-type: application/json
+vary: Origin
+
+{"cliente":"Paciente Evidencia 02","servicio":"deportiva","fecha":"2026-10-28","hora":"08:00","fisioterapeuta":"mariana","telefono":null,"motivo_consulta":null,"codigo":"VF-2DEACBC693","estado":"activa","precio_cop":70000,"duracion_minutos":45,"fisioterapeuta_asignado":"mariana","creada_en":"2026-10-22T20:27:16.986647-05:00","cancelada_en":null,"reprogramada_en":null,"historial_reprogramaciones":[]}
+
+[SQLite tras POST /citas para código VF-2DEACBC693]:
+{
+  "codigo": "VF-2DEACBC693",
+  "cliente": "Paciente Evidencia 02",
+  "servicio": "deportiva",
+  "fecha": "2026-10-28",
+  "hora": "08:00",
+  "duracion_minutos": 45,
+  "estado": "activa",
+  "fisioterapeuta": "mariana",
+  "fisioterapeuta_asignado": "mariana",
+  "telefono": null,
+  "motivo_consulta": null,
+  "precio_cop": 70000,
+  "creada_en": "2026-10-22T20:27:16.986647-05:00",
+  "cancelada_en": null,
+  "reprogramada_en": null,
+  "historial_reprogramaciones": "[]"
+}
+
+>>> PASO 2: Consultar cita creada (GET /citas/VF-2DEACBC693)
+HTTP/1.1 200 OK
+date: Fri, 23 Oct 2026 01:27:16 GMT
+server: uvicorn
+content-length: 402
+content-type: application/json
+vary: Origin
+
+{"cliente":"Paciente Evidencia 02","servicio":"deportiva","fecha":"2026-10-28","hora":"08:00","fisioterapeuta":"mariana","telefono":null,"motivo_consulta":null,"codigo":"VF-2DEACBC693","estado":"activa","precio_cop":70000,"duracion_minutos":45,"fisioterapeuta_asignado":"mariana","creada_en":"2026-10-22T20:27:16.986647-05:00","cancelada_en":null,"reprogramada_en":null,"historial_reprogramaciones":[]}
+
+>>> PASO 3: Reprogramar cita (PATCH /citas/VF-2DEACBC693/reprogramar -> 2026-10-28 10:30)
+HTTP/1.1 200 OK
+date: Fri, 23 Oct 2026 01:27:16 GMT
+server: uvicorn
+content-length: 538
+content-type: application/json
+vary: Origin
+
+{"cliente":"Paciente Evidencia 02","servicio":"deportiva","fecha":"2026-10-28","hora":"10:30","fisioterapeuta":"mariana","telefono":null,"motivo_consulta":null,"codigo":"VF-2DEACBC693","estado":"activa","precio_cop":70000,"duracion_minutos":45,"fisioterapeuta_asignado":"mariana","creada_en":"2026-10-22T20:27:16.986647-05:00","cancelada_en":null,"reprogramada_en":"2026-10-22T20:27:17.034666-05:00","historial_reprogramaciones":[{"fecha_anterior":"2026-10-28","hora_anterior":"08:00","modificada_en":"2026-10-22T20:27:17.034666-05:00"}]}
+[SQLite tras PATCH /reprogramar para código VF-2DEACBC693]:
+{
+  "codigo": "VF-2DEACBC693",
+  "cliente": "Paciente Evidencia 02",
+  "servicio": "deportiva",
+  "fecha": "2026-10-28",
+  "hora": "10:30",
+  "duracion_minutos": 45,
+  "estado": "activa",
+  "fisioterapeuta": "mariana",
+  "fisioterapeuta_asignado": "mariana",
+  "telefono": null,
+  "motivo_consulta": null,
+  "precio_cop": 70000,
+  "creada_en": "2026-10-22T20:27:16.986647-05:00",
+  "cancelada_en": null,
+  "reprogramada_en": "2026-10-22T20:27:17.034666-05:00",
+  "historial_reprogramaciones": "[{\"fecha_anterior\": \"2026-10-28\", \"hora_anterior\": \"08:00\", \"modificada_en\": \"2026-10-22T20:27:17.034666-05:00\"}]"
+}
+
+>>> PASO 4: Cancelar cita (DELETE /citas/VF-2DEACBC693?confirmado=true)
+HTTP/1.1 200 OK
+date: Fri, 23 Oct 2026 01:27:16 GMT
+server: uvicorn
+content-length: 571
+content-type: application/json
+vary: Origin
+
+{"cliente":"Paciente Evidencia 02","servicio":"deportiva","fecha":"2026-10-28","hora":"10:30","fisioterapeuta":"mariana","telefono":null,"motivo_consulta":null,"codigo":"VF-2DEACBC693","estado":"cancelada","precio_cop":70000,"duracion_minutos":45,"fisioterapeuta_asignado":"mariana","creada_en":"2026-10-22T20:27:16.986647-05:00","cancelada_en":"2026-10-22T20:27:17.057764-05:00","reprogramada_en":"2026-10-22T20:27:17.034666-05:00","historial_reprogramaciones":[{"fecha_anterior":"2026-10-28","hora_anterior":"08:00","modificada_en":"2026-10-22T20:27:17.034666-05:00"}]}
+[SQLite tras DELETE para código VF-2DEACBC693 (la fila se conserva con estado='cancelada' y cancelada_en lleno)]:
+{
+  "codigo": "VF-2DEACBC693",
+  "cliente": "Paciente Evidencia 02",
+  "servicio": "deportiva",
+  "fecha": "2026-10-28",
+  "hora": "10:30",
+  "duracion_minutos": 45,
+  "estado": "cancelada",
+  "fisioterapeuta": "mariana",
+  "fisioterapeuta_asignado": "mariana",
+  "telefono": null,
+  "motivo_consulta": null,
+  "precio_cop": 70000,
+  "creada_en": "2026-10-22T20:27:16.986647-05:00",
+  "cancelada_en": "2026-10-22T20:27:17.057764-05:00",
+  "reprogramada_en": "2026-10-22T20:27:17.034666-05:00",
+  "historial_reprogramaciones": "[{\"fecha_anterior\": \"2026-10-28\", \"hora_anterior\": \"08:00\", \"modificada_en\": \"2026-10-22T20:27:17.034666-05:00\"}]"
+}

@@ -1,0 +1,76 @@
+# Evidencia 04: Liberación de disponibilidad al cancelar y persistencia en SQLite tras reiniciar la API
+Fecha y hora: 2026-10-22T20:27:17-05:00
+Qué se probaba: Que al cancelar la Reserva A (10:00 del 2026-10-29 con mariana), el horario 10:00 vuelva a aparecer en GET /disponibilidad, y que al detener por completo el proceso uvicorn y volverlo a iniciar, todas las filas (activas y canceladas) sigan persistidas en reservas.db.
+Comandos ejecutados:
+  curl -sS 'http://127.0.0.1:8012/disponibilidad?fecha=2026-10-29&servicio=evaluacion&fisioterapeuta=mariana' (antes de cancelar)
+  curl -sS -i -X DELETE 'http://127.0.0.1:8012/citas/VF-1E8A68B1F8?confirmado=true'
+  curl -sS 'http://127.0.0.1:8012/disponibilidad?fecha=2026-10-29&servicio=evaluacion&fisioterapeuta=mariana' (después de cancelar)
+  kill <PID_UVICORN> && uvicorn main:app --host 127.0.0.1 --port 8012
+  curl -sS -i http://127.0.0.1:8012/citas/VF-1E8A68B1F8
+  python -c "import sqlite3... SELECT codigo, cliente, servicio, fecha, hora, estado, fisioterapeuta_asignado FROM reservas WHERE fecha='2026-10-29'"
+----------------------------------------------------------------------
+>>> 1) Disponibilidad de Mariana el 2026-10-29 ANTES de cancelar VF-1E8A68B1F8 (10:00 no está disponible):
+{"fecha":"2026-10-29","servicio":"evaluacion","fisioterapeuta":"mariana","horarios_disponibles":["07:00","07:30","08:00","08:30","09:00","12:00","12:30","13:00","13:30","14:00","14:30","15:00","15:30","16:00","16:30","17:00","17:30","18:00"],"horas":["07:00","07:30","08:00","08:30","09:00","12:00","12:30","13:00","13:30","14:00","14:30","15:00","15:30","16:00","16:30","17:00","17:30","18:00"]}
+
+>>> 2) Cancelación de la cita VF-1E8A68B1F8 (DELETE /citas/VF-1E8A68B1F8?confirmado=true):
+HTTP/1.1 200 OK
+date: Fri, 23 Oct 2026 01:27:16 GMT
+server: uvicorn
+content-length: 431
+content-type: application/json
+vary: Origin
+
+{"cliente":"Paciente Turno A","servicio":"evaluacion","fecha":"2026-10-29","hora":"10:00","fisioterapeuta":"mariana","telefono":null,"motivo_consulta":null,"codigo":"VF-1E8A68B1F8","estado":"cancelada","precio_cop":80000,"duracion_minutos":60,"fisioterapeuta_asignado":"mariana","creada_en":"2026-10-22T20:27:17.081642-05:00","cancelada_en":"2026-10-22T20:27:17.131556-05:00","reprogramada_en":null,"historial_reprogramaciones":[]}
+
+>>> 3) Disponibilidad de Mariana el 2026-10-29 DESPUÉS de cancelar VF-1E8A68B1F8 (10:00 vuelve a estar disponible):
+{"fecha":"2026-10-29","servicio":"evaluacion","fisioterapeuta":"mariana","horarios_disponibles":["07:00","07:30","08:00","08:30","09:00","09:30","10:00","12:00","12:30","13:00","13:30","14:00","14:30","15:00","15:30","16:00","16:30","17:00","17:30","18:00"],"horas":["07:00","07:30","08:00","08:30","09:00","09:30","10:00","12:00","12:30","13:00","13:30","14:00","14:30","15:00","15:30","16:00","16:30","17:00","17:30","18:00"]}
+
+>>> 4) Deteniendo servidor FastAPI (PID 34360) y reiniciando proceso nuevo...
+Servidor FastAPI reiniciado con nuevo PID: 34399
+
+>>> 5) Consulta de la cita cancelada VF-1E8A68B1F8 tras reiniciar la API (GET /citas/VF-1E8A68B1F8):
+HTTP/1.1 200 OK
+date: Fri, 23 Oct 2026 01:27:18 GMT
+server: uvicorn
+content-length: 431
+content-type: application/json
+vary: Origin
+
+{"cliente":"Paciente Turno A","servicio":"evaluacion","fecha":"2026-10-29","hora":"10:00","fisioterapeuta":"mariana","telefono":null,"motivo_consulta":null,"codigo":"VF-1E8A68B1F8","estado":"cancelada","precio_cop":80000,"duracion_minutos":60,"fisioterapeuta_asignado":"mariana","creada_en":"2026-10-22T20:27:17.081642-05:00","cancelada_en":"2026-10-22T20:27:17.131556-05:00","reprogramada_en":null,"historial_reprogramaciones":[]}
+
+>>> 6) Filas en SQLite (reservas.db) para la fecha 2026-10-29 tras el reinicio (se conservan activas y canceladas):
+[
+  {
+    "codigo": "VF-1E8A68B1F8",
+    "cliente": "Paciente Turno A",
+    "servicio": "evaluacion",
+    "fecha": "2026-10-29",
+    "hora": "10:00",
+    "duracion_minutos": 60,
+    "estado": "cancelada",
+    "fisioterapeuta_asignado": "mariana",
+    "cancelada_en": "2026-10-22T20:27:17.131556-05:00"
+  },
+  {
+    "codigo": "VF-09B7D14F6A",
+    "cliente": "Paciente Turno Valeria",
+    "servicio": "deportiva",
+    "fecha": "2026-10-29",
+    "hora": "10:30",
+    "duracion_minutos": 45,
+    "estado": "activa",
+    "fisioterapeuta_asignado": "valeria",
+    "cancelada_en": null
+  },
+  {
+    "codigo": "VF-6E645E3D6E",
+    "cliente": "Paciente Turno Adyacente",
+    "servicio": "deportiva",
+    "fecha": "2026-10-29",
+    "hora": "11:00",
+    "duracion_minutos": 45,
+    "estado": "activa",
+    "fisioterapeuta_asignado": "mariana",
+    "cancelada_en": null
+  }
+]

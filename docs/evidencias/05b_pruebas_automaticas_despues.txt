@@ -1,0 +1,7 @@
+# Evidencia 05b: Suite de pruebas automáticas (después de la reorganización y limpieza)
+Fecha y hora: 2026-10-22T20:28:02-05:00
+Qué se probaba: Ejecución de regresión de probar_fisioterapia.py tras limpiar el bloque de demos en main.py, actualizar docstrings y preparar reservas.db.
+Comando ejecutado: ./.venv/bin/python probar_fisioterapia.py
+----------------------------------------------------------------------
+Iniciando pruebas de VLFisioterapia...
+Todas las pruebas pasaron satisfactoriamente (100% OK).

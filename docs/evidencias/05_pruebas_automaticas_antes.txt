@@ -1,0 +1,7 @@
+# Evidencia 05: Suite de pruebas automáticas (antes de la reorganización)
+Fecha y hora: 2026-10-22T20:17:07-05:00
+Qué se probaba: Línea base de la suite unitaria y de integración (probar_fisioterapia.py) con TestClient y SQLite temporal antes de limpiar main.py y reorganizar el repositorio.
+Comando ejecutado: ./.venv/bin/python probar_fisioterapia.py
+----------------------------------------------------------------------
+Iniciando pruebas de VLFisioterapia...
+Todas las pruebas pasaron satisfactoriamente (100% OK).
