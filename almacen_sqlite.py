@@ -2,7 +2,14 @@
 
 import json
 import re
-import sqlite3
+import sys
+
+try:
+    import sqlite3
+except ImportError:
+    import pysqlite3 as sqlite3
+    sys.modules["sqlite3"] = sqlite3
+
 from contextlib import contextmanager
 from datetime import date, datetime, time
 from pathlib import Path

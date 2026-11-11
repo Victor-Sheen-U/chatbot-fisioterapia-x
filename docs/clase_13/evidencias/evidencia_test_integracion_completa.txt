@@ -1,0 +1,35 @@
+======================================================================
+VERIFICACIÓN DE INTEGRACIÓN COMPLETA (CLASES 06 Y 07)
+======================================================================
+
+[1/3] Probando endpoints de main.py (nativos y compatibilidad)...
+  ✓ GET /api/saludo OK
+  ✓ GET /api/servicios OK
+  ✓ GET /api/disponibilidad OK (Turnos disponibles: 23)
+  ✓ POST /api/reservas OK (Cita creada: VF-7C20980320)
+  ✓ GET /api/reservas/VF-7C20980320 OK
+  ✓ DELETE /api/reservas/VF-7C20980320 OK (Estado: cancelada)
+
+[2/3] Probando consulta_llm.py con el modelo Groq real...
+  Pregunta: '¿Qué tratamientos ofrecen y cuánto cuestan?'
+  Plan Groq: {'accion': 'servicios', 'cliente': '', 'servicio': '', 'fecha': '', 'hora': '', 'codigo': ''}
+  ✓ consulta_llm.ejecutar(plan_servicios) OK
+
+[3/3] Probando chatbot_memoria.py (Memoria Multi-Turno y REINICIAR)...
+  Historial inicial: 1 mensaje (solo system)
+  Turno 1: 'Hola, me llamo Mariana Gomez y deseo agendar una valoración para el 2026-11-16'
+  Plan Turno 1: {'accion': 'crear', 'cliente': 'Mariana Gomez', 'servicio': 'evaluacion', 'fecha': '2026-11-16', 'hora': '', 'codigo': ''}
+  Tipo resultado Turno 1: faltan_datos -> Para crear necesito los siguientes datos pendientes: hora en formato HH:MM.
+  Turno 2: 'A las 07:00'
+  Plan Turno 2 (acumulado): {'accion': 'crear', 'cliente': 'Mariana Gomez', 'servicio': 'evaluacion', 'fecha': '2026-11-16', 'hora': '07:00', 'codigo': ''}
+  Tipo resultado Turno 2: confirmacion -> Voy a crear la cita: servicio=evaluacion, paciente=Mariana Gomez, fecha=2026-11-16, hora=07:00. ¿Confirmas la operación? (s/n)
+  Confirmando la cita...
+  ✓ Cita agendada con éxito: VF-060A6401BA para Mariana Gomez
+  Probando comando REINICIAR...
+  ✓ Historial reiniciado. Mensajes: 1
+  ✓ Comprobación persistencia: La cita VF-060A6401BA sigue existiendo en reservas.db!
+  ✓ Cita de prueba VF-060A6401BA cancelada para mantener limpia la agenda.
+
+======================================================================
+¡TODAS LAS PRUEBAS DE INTEGRACIÓN PASARON EXITOSAMENTE (100% OK)!
+======================================================================

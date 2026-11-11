@@ -5,7 +5,14 @@ Persistencia relacional en SQLite (reservas.db) con control de concurrencia y tr
 
 import json
 import os
-import sqlite3
+import sys
+
+try:
+    import sqlite3
+except ImportError:
+    import pysqlite3 as sqlite3
+    sys.modules["sqlite3"] = sqlite3
+
 from datetime import date, datetime
 from pathlib import Path
 from threading import RLock
@@ -19,13 +26,17 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 import uvicorn
 
 from almacen_sqlite import AgendaSQLite, ConflictoReserva, ReservaNoEncontrada, CitaCancelada
+from api_telegram import AgendaTelegram, crear_router
+from consulta_llm import cargar_env
+
+cargar_env()
 
 BASE = Path(__file__).resolve().parent
 ARCHIVO_CLINICA = BASE / "clinica.json"
 
 CLINICA = json.loads(ARCHIVO_CLINICA.read_text(encoding="utf-8-sig"))
 ZONA = ZoneInfo(CLINICA["zona_horaria"])
-agenda = AgendaSQLite.desde_negocio(BASE / "reservas.db", CLINICA)
+agenda = AgendaTelegram.desde_negocio(BASE / "reservas.db", CLINICA)
 
 if CLINICA["paso_minutos"] <= 0:
     raise ValueError("El paso de minutos debe ser positivo.")
@@ -48,6 +59,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Integración del canal Telegram sobre la misma instancia de agenda
+app.include_router(crear_router(agenda, os.getenv("CHATBOT_API_KEY", "")))
 
 
 # ==============================================================================

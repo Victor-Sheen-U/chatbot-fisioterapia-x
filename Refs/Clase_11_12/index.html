@@ -1,0 +1,472 @@
+<!doctype html>
+<html lang="es"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Clase 11–12 · Telegram como canal del chatbot</title>
+<link rel="stylesheet" href="assets/reveal.css">
+<style>
+:root{--navy:#102a4c;--blue:#0077b6;--cyan:#e3f4fa}
+body{background:#f8fbfd}.reveal{color:var(--navy);font-family:Arial,Helvetica,sans-serif;font-size:36px}
+.reveal .slides section{text-align:left;box-sizing:border-box;padding:34px 48px}
+h1,h2,h3{color:var(--navy);letter-spacing:-.02em;margin:0 0 20px!important;text-transform:none!important}
+.reveal h1{font-size:1.65em}.reveal h2{font-size:1.32em}.reveal h3{font-size:1.04em}
+.reveal p,.reveal li{font-size:.72em;line-height:1.35;margin:.38em 0}
+.lead{font-size:.9em!important}.eyebrow{color:var(--blue);font-size:.48em!important;font-weight:bold;text-transform:uppercase;letter-spacing:.1em}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:26px;align-items:start}
+.note{background:var(--cyan);padding:13px 18px;border-left:5px solid #1da9ca;border-radius:4px;font-size:.7em!important;margin-top:20px!important}
+.code{background:#10233f;color:#f2f7ff;border-radius:8px;padding:16px 20px;font-family:Consolas,monospace;font-size:.52em;line-height:1.38;white-space:pre-wrap;overflow-wrap:anywhere;margin:12px 0}
+.result{background:#0d1e35;color:#f2f7ff;border-radius:8px;padding:13px 16px;min-height:100px;max-height:325px;overflow:auto;white-space:pre-wrap;word-break:break-word;font:18px/1.35 Consolas,monospace}
+
+button,.download{background:#0077b6;border:0;color:#fff;border-radius:5px;padding:10px 16px;font:17px Arial,sans-serif;cursor:pointer;margin:8px 8px 6px 0;display:inline-block;text-decoration:none}
+button:disabled{opacity:.6;cursor:wait}.secondary{background:#536c84}.small{font-size:.56em!important}
+.compact p{font-size:.68em}.compact .code{font-size:.49em}.reveal .progress{height:5px;color:#0077b6}
+.reveal table{width:100%;font-size:.62em;line-height:1.35;border-collapse:collapse;margin:15px 0}.reveal th,.reveal td{text-align:left;padding:12px 14px;border-bottom:1px solid #cbdce8;vertical-align:top}.reveal th{color:#0077b6}
+.mode{font-size:.46em!important;color:#526a80;line-height:1.3!important}.reveal code{font-family:Consolas,monospace}
+.reveal label{font-size:19px;display:block;margin-top:10px}.reveal input{box-sizing:border-box;border:1px solid #a8bfd0;border-radius:4px;padding:11px 12px;font:19px Arial,sans-serif;width:100%;margin:5px 0;color:#102a4c;background:#fff}
+.reveal a{color:#0077b6}.reveal a.download{color:#fff}.reveal a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #cb7200;outline-offset:3px}
+.route{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:28px 0}.route div{border-top:4px solid #0077b6;padding:14px 12px;background:#eaf3f8;font-size:25px;line-height:1.35}.route span{display:block;font-size:19px;margin-top:8px}
+.reveal .slide-number{background:transparent;color:#526a80;font:15px Arial,sans-serif;bottom:14px;left:24px;right:auto}
+
+.result{max-height:none;overflow:visible}
+.result-compact{font-size:17px;line-height:1.3}
+.example-title{color:#0077b6;font-size:19px!important;font-weight:bold;margin:0 0 10px!important}
+</style>
+</head>
+<body><div class="reveal"><div class="slides">
+
+<section id="inicio">
+<p class="eyebrow">Creación de chatbots · Tercer corte</p>
+<h1>Clase 11–12 · Telegram como canal del chatbot</h1>
+<p class="lead">En la clase anterior construimos una conversación con historial y una interfaz conectada con FastAPI. Hoy llevaremos esas mismas funciones a Telegram para que una persona consulte el negocio desde su teléfono o computador.</p>
+<p>Vamos a crear el bot, recibir sus mensajes y distinguir los comandos de las preguntas. Al terminar, cada equipo deberá demostrar una consulta real desde Telegram hasta los datos de su proyecto.</p>
+</section>
+
+<section id="recorrido">
+<h2>Qué cambia cuando usamos Telegram</h2>
+<p>Telegram entrega el mensaje a nuestro programa. El archivo <code>bot_telegram.py</code> extrae el texto, llama la función de conversación y envía el resultado al chat. Ese archivo adapta el canal a la lógica que ya tenemos.</p>
+<div class="route"><div>1. Telegram<span>La persona escribe y el bot recoge el evento.</span></div><div>2. Adaptador<span>Un manejador recibe el texto y llama al proyecto.</span></div><div>3. Proyecto<span>El modelo interpreta y FastAPI consulta el negocio.</span></div><div>4. Respuesta<span>El adaptador convierte el resultado en un mensaje.</span></div></div>
+<p class="note">El cliente de FastAPI y las funciones de conversación siguen en sus módulos. El nuevo archivo se ocupa de la entrada y la salida de Telegram.</p>
+</section>
+
+<section id="identidad">
+<h2>La cuenta del bot y el programa que responde</h2>
+<p>Crear un bot registra una identidad en Telegram: un nombre visible y un nombre de usuario que podremos compartir. Para que esa cuenta responda con nuestro proyecto, hace falta un proceso Python que esté funcionando con su token.</p>
+<table><thead><tr><th>Parte</th><th>Qué aporta</th></tr></thead><tbody><tr><td>Cuenta de Telegram</td><td>Permite encontrar el bot y abrir su conversación.</td></tr><tr><td>Proceso Python</td><td>Recoge los eventos, ejecuta los manejadores y prepara las respuestas.</td></tr><tr><td>Servicios del proyecto</td><td>El modelo interpreta las consultas y FastAPI accede al negocio.</td></tr></tbody></table>
+<p class="note">Si detenemos Python, la cuenta sigue apareciendo. Las funciones del proyecto dejan de atender mientras el proceso esté apagado.</p>
+</section>
+
+<section id="botfather" class="compact">
+<h2>Crear el bot con BotFather</h2>
+<p>BotFather es el bot oficial para registrar y administrar bots. Abriremos el contacto oficial y seguiremos esta conversación:</p>
+<table><thead><tr><th>Lo que enviamos</th><th>Qué estamos definiendo</th></tr></thead><tbody><tr><td><code>/newbot</code></td><td>Solicitamos una cuenta nueva.</td></tr><tr><td>Nombre del negocio</td><td>El nombre que verá la persona, por ejemplo «Asistente Salón Aurora».</td></tr><tr><td>Usuario disponible terminado en <code>bot</code></td><td>El identificador público del bot. BotFather comprueba su disponibilidad.</td></tr><tr><td>Guardamos el token y abrimos el enlace</td><td>Conservamos la credencial de forma privada e iniciamos el chat del bot.</td></tr></tbody></table>
+<a class="download" href="https://t.me/BotFather" target="_blank" rel="noopener noreferrer">Abrir BotFather</a>
+<p class="small">El programa responderá después de iniciarlo con el token recibido. El enlace público se puede compartir con las personas que harán las pruebas.</p>
+<aside class="notes">Fuente: https://core.telegram.org/bots/tutorial</aside>
+</section>
+
+<section id="token">
+<h2>El token autoriza el acceso a nuestro bot</h2>
+<p>El token que entrega BotFather permite que Python utilice la Bot API en nombre de esa cuenta. Es diferente de la clave de Groq: cada credencial autoriza el acceso a un servicio distinto.</p>
+<table><thead><tr><th>Configuración</th><th>Servicio que utiliza</th></tr></thead><tbody><tr><td><code>TELEGRAM_BOT_TOKEN</code></td><td>Telegram, para recibir actualizaciones y enviar mensajes.</td></tr><tr><td><code>GROQ_API_KEY</code> y <code>GROQ_MODEL</code></td><td>El proveedor y el modelo que interpreta las consultas.</td></tr><tr><td><code>CHATBOT_API_URL</code></td><td>La dirección de FastAPI que consulta el negocio.</td></tr></tbody></table>
+<p class="note">El token permanece en el equipo que ejecuta el bot. Compartimos el enlace público. Si una credencial se expone, la renovamos desde BotFather y actualizamos el programa.</p>
+</section>
+
+<section id="archivos" class="compact">
+<h2>Añadimos un archivo al proyecto existente</h2>
+<p>Copien <code>bot_telegram.py</code> en la carpeta donde ya están <code>chatbot_memoria.py</code> y <code>consulta_llm.py</code>. El nuevo archivo importará las funciones de esos módulos.</p>
+<pre class="code">proyecto/
+    bot_telegram.py       # Recibe y responde en Telegram
+    chatbot_memoria.py    # nuevo_historial() y procesar_turno()
+    consulta_llm.py       # Modelo y peticiones a FastAPI
+    app_gradio.py         # Interfaz que ya teníamos
+    main.py              # FastAPI, según el nombre de su equipo
+    almacen_sqlite.py    # Almacenamiento del negocio</pre>
+<p>Si organizaron el proyecto de otra forma, adapten el import y conserven las responsabilidades de cada módulo. Durante esta práctica mantendremos FastAPI encendida y ejecutaremos Telegram desde otra terminal.</p>
+<a class="download" href="material/Clase_11_12_Estudiantes.zip" download="">Descargar archivo y laboratorio</a>
+</section>
+
+<section id="entorno" class="compact">
+<h2>Instalamos la biblioteca en el entorno actual</h2>
+<p>Usamos el entorno virtual del proyecto. Al indicar su ejecutable completo, instalamos la biblioteca en ese Python y podemos ejecutarlo sin activar el entorno.</p>
+<pre class="code" id="cmd-entorno">.\.venv\Scripts\python.exe -m pip install "python-telegram-bot&gt;=22,&lt;23"
+
+.\.venv\Scripts\python.exe -c "import telegram; print(telegram.__version__)"</pre>
+<button data-copy="cmd-entorno">Copiar comandos</button>
+<p>La dependencia se llama <code>python-telegram-bot</code>. En Python utilizaremos los módulos <code>telegram</code> y <code>telegram.ext</code>. Agreguen también la dependencia al archivo de requisitos del proyecto.</p>
+<p class="note">Si su entorno se encuentra en otra carpeta o tiene otro nombre, utilicen esa ruta. El Python que instala la biblioteca debe ser el mismo que ejecuta el bot.</p>
+</section>
+
+<section id="configuracion" class="compact">
+<h2>Configuramos el modelo y la dirección de FastAPI</h2>
+<p>En la terminal del bot recuperamos la configuración del proyecto. Las variables pertenecen al proceso que iniciamos desde esa terminal.</p>
+<pre class="code" id="cmd-config">$env:CHATBOT_API_URL = "http://127.0.0.1:8011"
+$env:GROQ_MODEL = "ID_DEL_MODELO_HABILITADO_EN_SU_CUENTA"
+
+$claveGroqProyecto = Read-Host "API key de Groq" -AsSecureString
+$env:GROQ_API_KEY = [System.Net.NetworkCredential]::new('', $claveGroqProyecto).Password</pre>
+<button data-copy="cmd-config">Copiar configuración</button>
+<p>Usen el puerto real de su API y el ID de un modelo que tengan habilitado. El archivo entregado solicitará el token de BotFather sin mostrarlo al escribir, salvo que ya exista <code>TELEGRAM_BOT_TOKEN</code> en el entorno.</p>
+<p class="small">Si cambian una variable, detengan el proceso y vuelvan a iniciarlo. Las credenciales quedan fuera de los mensajes, del repositorio y de las evidencias.</p>
+</section>
+
+<section id="polling">
+<h2>Cómo llegan los mensajes: long polling</h2>
+<p>El programa inicia una solicitud a Telegram y espera nuevas actualizaciones. Cuando llegan, la biblioteca las entrega a los manejadores registrados y continúa esperando. Ese ciclo se llama <em>long polling</em>.</p>
+<p>La conexión comienza desde nuestro computador. Por eso podemos probar el bot sin publicar una dirección web para recibir eventos. Si FastAPI está en ese mismo equipo, el programa puede seguir consultándola en <code>127.0.0.1</code>.</p>
+<pre class="code">aplicacion.run_polling(allowed_updates=["message"])</pre>
+<p class="note">Para un token ejecutamos una instancia de polling. Telegram también admite webhooks, donde envía los eventos a una dirección configurada. Hoy utilizaremos polling.</p>
+<aside class="notes">Fuentes: https://core.telegram.org/bots/api#getting-updates y https://core.telegram.org/bots/faq#how-do-i-get-updates</aside>
+</section>
+
+<section id="actualizacion" class="compact">
+<h2>Update representa el evento recibido</h2>
+<div class="cols"><div><p>Telegram entrega una actualización con los datos del evento. La biblioteca la convierte en un objeto <code>Update</code>. Primero comprobamos si existe un mensaje y luego extraemos su texto.</p>
+<pre class="code">mensaje = update.effective_message
+pregunta = mensaje.text
+chat_id = update.effective_chat.id
+persona_id = update.effective_user.id</pre>
+<p>El identificador del chat indica la conversación. El identificador de usuario indica quién intervino. En un grupo varias personas comparten el mismo chat.</p></div>
+<div><p class="example-title">Actualización recibida (fragmento)</p><div class="result" id="salida-update">{
+  "update_id": 55,
+  "message": {
+    "text": "¿Qué servicios ofrecen?",
+    "chat": {"id": 3769874578, "type": "private"},
+    "from": {"id": 3769874578, "first_name": "Laura"}
+  }
+}</div><p class="mode">El mensaje contiene el texto, el identificador del chat y los datos de quien lo envió.</p></div></div>
+</section>
+
+<section id="handlers" class="compact">
+<h2>Un handler asocia un evento con una función</h2>
+<div class="cols"><div><p>Al registrar un manejador indicamos qué debe reconocer y qué función debe ejecutar. Para un comando utilizamos <code>CommandHandler</code>. El nombre del comando se escribe sin la barra dentro del registro.</p>
+<pre class="code">aplicacion.add_handler(
+    CommandHandler("help", ayuda)
+)</pre>
+<p>Cuando llega <code>/help</code>, la biblioteca llama a <code>ayuda(update, context)</code>. El manejador dirige el evento. La función define la respuesta.</p></div>
+<div><p class="example-title">Entrada: /help</p><div class="result" id="salida-handler">Función seleccionada: ayuda()
+
+/start: mostrar la bienvenida.
+/help: ver esta ayuda.
+/reset: reiniciar esta conversación.
+
+Prueba: ¿Qué servicios ofrecen?
+O pregunta por disponibilidad indicando servicio y fecha.
+En esta versión las operaciones de reserva quedan sin ejecutar.</div><p class="mode">CommandHandler reconoce /help y entrega el evento a ayuda().</p></div></div>
+</section>
+
+<section id="filtros" class="compact">
+<h2>Los filtros seleccionan las preguntas del negocio</h2>
+<div class="cols"><div><p>Este filtro admite texto de conversaciones privadas y excluye comandos. <code>&amp;</code> exige ambas condiciones y <code>~</code> excluye la que sigue. Así una pregunta llega al chatbot y <code>/help</code> sigue su propia ruta.</p>
+<pre class="code">privado = filters.ChatType.PRIVATE
+filtro = privado &amp; filters.TEXT &amp; ~filters.COMMAND
+
+aplicacion.add_handler(
+    MessageHandler(filtro, recibir_texto)
+)</pre>
+<p class="small">El archivo también orienta ante fotos y comandos desconocidos. Los mensajes de grupo quedan fuera de esta primera implementación.</p></div>
+<div><p class="example-title">Resultados de las cuatro entradas</p><div class="result result-compact" id="salida-filtro">TEXTO PRIVADO
+recibir_texto(): muestra el catálogo.
+
+FOTO
+otro_mensaje():
+Por ahora recibo consultas escritas. Envíame un mensaje de texto.
+
+COMANDO /precio
+comando_desconocido():
+No conozco ese comando. Usa /start, /help o /reset.
+
+MENSAJE DE GRUPO
+Sin respuesta: el evento queda fuera del filtro.</div><p class="mode">Cada entrada sigue la función que corresponde a su filtro.</p></div></div>
+<aside class="notes">Fuente: https://docs.python-telegram-bot.org/en/stable/telegram.ext.filters.html</aside>
+</section>
+
+<section id="async" class="compact">
+<h2>Por qué los manejadores usan async y await</h2>
+<p><code>async def</code> define una función que puede participar en el procesamiento asíncrono. <code>await</code> espera una operación compatible con ese mecanismo. Cuando enviamos una respuesta, esperamos que termine la llamada de envío.</p>
+<pre class="code">async def iniciar(update, context):
+    mensaje = update.effective_message
+    if mensaje is not None:
+        await mensaje.reply_text("Hola. ¿Qué deseas consultar?")</pre>
+<p>Mientras una operación asíncrona espera la red, el bucle de eventos puede atender otras tareas preparadas. Escribir <code>async</code> no transforma automáticamente en asíncronas las funciones comunes que llamamos dentro.</p>
+<p class="note">Conservaremos el procesamiento secuencial de actualizaciones que utiliza la aplicación por defecto. La adaptación del cliente síncrono la veremos al conectar el módulo anterior.</p>
+<aside class="notes">Fuente: https://docs.python.org/3/reference/compound_stmts.html#coroutine-function-definition</aside>
+</section>
+
+<section id="start" class="compact">
+<h2>/start presenta el negocio y permite comenzar</h2>
+<div class="cols"><div><p>La bienvenida debe explicar quién atiende y qué se puede consultar. En nuestro archivo, <code>/start</code> crea un historial únicamente cuando todavía no existe. Si ya estábamos conversando, podremos continuar.</p>
+<pre class="code">context.chat_data.setdefault(
+    "historial", nuevo_historial()
+)
+await enviar_texto(mensaje, BIENVENIDA)</pre>
+<p><code>setdefault()</code> conserva el valor existente. El reinicio se realizará con un comando específico.</p></div>
+<div><p class="example-title">Resultado de /start</p><div class="result" id="salida-start">Hola. Soy el asistente del Salón Aurora. Puedes consultar nuestros servicios y los horarios disponibles. Escribe /help para ver ejemplos.
+
+Historial: 1 antes / 1 después.
+Sin petición al negocio.</div><p class="mode">La bienvenida orienta a la persona. El historial existente se conserva.</p></div></div>
+</section>
+
+<section id="help" class="compact">
+<h2>/help explica lo que el bot admite</h2>
+<div class="cols"><div><p>La ayuda ofrece los comandos y ejemplos válidos del negocio. Su respuesta se prepara directamente en Python. Mostrar la ayuda no necesita una consulta al modelo ni a FastAPI.</p>
+<pre class="code">async def ayuda(update, context):
+    await enviar_texto(
+        update.effective_message, AYUDA
+    )</pre>
+<p>Podemos registrar el menú con <code>/setcommands</code> en BotFather. Ese menú muestra las opciones. El comportamiento sigue definido en nuestras funciones.</p></div>
+<div><p class="example-title">Respuesta de ayuda()</p><div class="result" id="salida-help">/start: mostrar la bienvenida.
+/help: ver esta ayuda.
+/reset: reiniciar esta conversación.
+
+Prueba: ¿Qué servicios ofrecen?
+O pregunta por disponibilidad indicando servicio y fecha.
+En esta versión las operaciones de reserva quedan sin ejecutar.</div><p class="mode">La ayuda se prepara directamente en Python. No necesita consultar el modelo ni FastAPI.</p></div></div>
+</section>
+
+<section id="respuesta">
+<h2>La respuesta se envía con reply_text()</h2>
+<p>En la interfaz anterior, una función devolvía valores que Gradio mostraba en pantalla. En este canal debemos realizar el envío. Un <code>return</code> por sí solo termina la función sin presentar una respuesta en el chat.</p>
+<pre class="code">texto = formatear_resultado(resultado, plan)
+await mensaje.reply_text(texto)</pre>
+<p>Primero convertimos el resultado del proyecto en texto legible. Después esperamos la llamada que lo envía al mensaje recibido. El archivo entregado agrupa ese envío en la función <code>enviar_texto()</code>.</p>
+<p class="note">La presentación puede adaptarse a cada negocio. Un catálogo debe mostrar datos útiles para la persona, como el servicio, el precio y la duración.</p>
+</section>
+
+<section id="contexto" class="compact">
+<h2>Context aporta los datos de esta conversación</h2>
+<p><code>update</code> contiene el evento que acaba de llegar. <code>context</code> permite acceder al bot y a datos asociados a su ejecución. Para adaptar nuestro módulo utilizaremos dos diccionarios con responsabilidades diferentes.</p>
+<table><thead><tr><th>Diccionario</th><th>Uso en el archivo entregado</th></tr></thead><tbody><tr><td><code>context.chat_data</code></td><td>Datos de ese chat. La clave <code>historial</code> conserva los mensajes que necesita la función de conversación.</td></tr><tr><td><code>context.bot_data</code></td><td>Configuración compartida del proceso, como el modelo y su clave de acceso.</td></tr></tbody></table>
+<pre class="code">historial = context.chat_data.get("historial")
+if historial is None:
+    historial = nuevo_historial()</pre>
+<p class="small">El historial de este ejemplo vive en la memoria del proceso. Al reiniciar Python no se recupera automáticamente. Las reservas conservan su almacenamiento en FastAPI.</p>
+<aside class="notes">Fuente: https://docs.python-telegram-bot.org/en/stable/telegram.ext.callbackcontext.html#telegram.ext.CallbackContext.chat_data</aside>
+</section>
+
+<section id="conexion" class="compact">
+<h2>Conectamos el texto con procesar_turno()</h2>
+<p>El adaptador importa la función de la clase anterior. Le entrega la pregunta y el historial de ese chat. Recibe el resultado, los mensajes actualizados y el plan identificado.</p>
+<pre class="code">from chatbot_memoria import nuevo_historial, procesar_turno
+
+resultado, actualizado, plan = await asyncio.to_thread(
+    procesar_turno, pregunta, historial, clave, modelo
+)
+context.chat_data["historial"] = actualizado
+await enviar_texto(mensaje, formatear_resultado(resultado, plan))</pre>
+<p>El módulo anterior utiliza peticiones síncronas. <code>asyncio.to_thread()</code> las ejecuta en un hilo de trabajo y permite esperar el resultado desde el manejador. Pasamos la función sin paréntesis y después sus argumentos.</p>
+<p class="small">El archivo completo también comprueba la configuración y atiende errores antes de actualizar el historial.</p>
+<aside class="notes">Fuente: https://docs.python.org/3/library/asyncio-task.html#asyncio.to_thread</aside>
+</section>
+
+<section id="catalogo" class="compact">
+<h2>Una consulta completa a los datos del negocio</h2>
+<div class="cols"><div><p>La pregunta «¿Qué servicios ofrecen?» llega al manejador de texto. Este llama al procesamiento del proyecto y su cliente consulta el catálogo de FastAPI. El texto de respuesta se prepara con los datos obtenidos.</p>
+<pre class="code"># Dentro del módulo que ya teníamos:
+resultado = ejecutar(plan)
+
+# De regreso en el adaptador:
+texto = formatear_resultado(resultado, plan)
+await enviar_texto(mensaje, texto)</pre>
+<p class="small">Observen el handler, la petición HTTP realizada y el tamaño del historial después de la consulta.</p></div>
+<div><p class="example-title">Resultado de «¿Qué servicios ofrecen?»</p><div class="result" id="salida-catalogo">Función: recibir_texto()
+
+Servicios disponibles:
+• corte: $25000. Duración: 30 minutos.
+• cepillado: $35000. Duración: 60 minutos.
+
+Historial: 1 antes / 3 después.
+HTTP: GET /api/servicios</div><p class="mode">Resultado obtenido con el intérprete de práctica y una petición HTTP real al catálogo de FastAPI.</p></div></div>
+</section>
+
+<section id="continuacion" class="compact">
+<h2>Una consulta puede completarse en otro mensaje</h2>
+<div class="cols"><div><p>La primera pregunta solicita disponibilidad de corte sin indicar fecha. La respuesta pide ese dato. El siguiente mensaje contiene únicamente la fecha y el historial permite completar la misma consulta.</p>
+<pre class="code">historial = context.chat_data["historial"]
+# El segundo turno reutiliza esta lista.
+resultado, actualizado, plan = await asyncio.to_thread(
+    procesar_turno, pregunta, historial, clave, modelo
+)</pre>
+<p class="small">La fecha del ejemplo es 2026-10-27. Para las pruebas de su proyecto utilicen una fecha futura en que el negocio atienda.</p></div>
+<div><p class="example-title">Consulta resuelta en dos turnos</p><div class="result result-compact" id="salida-continuacion">1. «Quiero consultar disponibilidad de corte»
+Necesito: fecha
+Historial: 1 antes / 3 después.
+
+2. «2026-10-27»
+corte para 2026-10-27:
+09:00, 09:30, 10:00, 10:30, 11:00, 11:30, 12:00, 12:30, 13:00, 13:30, 14:00, 14:30, 15:00, 15:30, 16:00, 16:30, 17:00, 17:30
+
+Historial: 3 antes / 5 después.
+HTTP: GET /api/disponibilidad?fecha=2026-10-27&amp;servicio=corte</div><p class="mode">El segundo mensaje completa la fecha que faltaba. La disponibilidad del ejemplo se consultó en FastAPI y SQLite.</p></div></div>
+</section>
+
+<section id="start-contexto" class="compact">
+<h2>La bienvenida conserva el historial existente</h2>
+<div class="cols"><div><p>Después de la consulta anterior se recibió <code>/start</code>. La bienvenida apareció otra vez y el número de mensajes del historial se mantuvo.</p>
+<pre class="code">context.chat_data.setdefault(
+    "historial", nuevo_historial()
+)
+# Si ya había historial, se conserva.</pre>
+<p>Este comportamiento permite distinguir «mostrar cómo comenzar» de «borrar el contexto». En el resultado veremos cuántos mensajes había antes y cuántos quedan después.</p></div>
+<div><p class="example-title">Resultado de /start después de la consulta</p><div class="result" id="salida-start-contexto">Hola. Soy el asistente del Salón Aurora. Puedes consultar nuestros servicios y los horarios disponibles. Escribe /help para ver ejemplos.
+
+Historial: 5 antes / 5 después.
+La bienvenida no añadió ni borró turnos.</div><p class="mode">El historial mantiene los cinco mensajes de la consulta anterior.</p></div></div>
+</section>
+
+<section id="reset" class="compact">
+<h2>/reset reinicia el contexto del chat que lo solicita</h2>
+<div class="cols"><div><p>El comando reemplaza la lista de mensajes de esta conversación por un historial nuevo. Después del reinicio, enviar solo una fecha ya no debe completar aquella consulta de disponibilidad.</p>
+<pre class="code">context.chat_data["historial"] = nuevo_historial()
+await enviar_texto(
+    mensaje, "Conversación reiniciada."
+)</pre>
+<p>La siguiente sesión desarrollará las comprobaciones con varias personas. Hoy debemos localizar dónde se recupera y dónde se reemplaza este contexto.</p></div>
+<div><p class="example-title">Resultado del reinicio y del siguiente mensaje</p><div class="result result-compact" id="salida-reset">1. /reset
+Conversación reiniciada. Dime qué deseas consultar. Las reservas del negocio se conservan.
+Historial: 5 antes / 1 después.
+
+2. Mensaje: 2026-10-27
+Puedo ayudar con servicios, disponibilidad y reservas.
+Historial: 1 antes / 3 después.
+HTTP: Sin petición al negocio.</div><p class="mode">Después del reinicio, la fecha suelta ya no completa la consulta de disponibilidad.</p></div></div>
+</section>
+
+<section id="errores" class="compact">
+<h2>Un fallo de conexión debe producir una orientación</h2>
+<div class="cols"><div><p>El procesamiento puede fallar al consultar el modelo o FastAPI. El manejador debe avisar qué ocurrió y conservar el historial anterior. La actualización se hace después de obtener y preparar un resultado válido.</p>
+<pre class="code">try:
+    resultado, actualizado, plan = await asyncio.to_thread(...)
+except (URLError, TimeoutError):
+    await enviar_texto(mensaje, "No pude completar la conexión.")
+    return
+
+context.chat_data["historial"] = actualizado</pre>
+<p class="small">El archivo también distingue errores HTTP y respuestas con formato inesperado.</p></div>
+<div><p class="example-title">Resultado del fallo de conexión de práctica</p><div class="result" id="salida-error">No pude completar la conexión. Intenta la consulta más tarde.
+
+Historial: 3 antes / 3 después.
+El turno fallido no se guardó como una respuesta válida.</div><p class="mode">El ejemplo ejecutó la rama de manejo de errores del archivo entregado.</p></div></div>
+</section>
+
+<section id="longitud" class="compact">
+<h2>Las respuestas extensas se dividen antes de enviarlas</h2>
+<p>Telegram admite hasta 4096 caracteres en un mensaje de texto. Un catálogo largo puede superar ese límite. El archivo entregado utiliza bloques de hasta 4000 caracteres y los envía en orden.</p>
+<pre class="code">async def enviar_texto(mensaje, texto):
+    for inicio in range(0, len(texto), 4000):
+        await mensaje.reply_text(texto[inicio:inicio + 4000])</pre>
+<p>El corte de la cadena permite cumplir el límite. Para la presentación final del proyecto conviene agrupar por servicios o por párrafos, de modo que cada mensaje conserve una idea completa.</p>
+<p class="note">Trabajaremos con texto sencillo. El formato del mensaje debe permitir entender el resultado que devolvió el negocio.</p>
+<aside class="notes">Fuente: https://core.telegram.org/bots/api#sendmessage</aside>
+</section>
+
+<section id="alcance" class="compact">
+<h2>Qué ocurre si hoy solicitan una reserva</h2>
+<div class="cols"><div><p>El módulo del proyecto puede reconocer una solicitud de reserva y devolver un plan pendiente. El adaptador de esta sesión atiende consultas. Si llega una operación que requiere confirmación, muestra lo reconocido e informa que quedó sin ejecutar.</p>
+<pre class="code">if resultado.get("tipo") == "confirmacion":
+    # Mostrar el plan y explicar el alcance.
+    # La operación todavía no se ejecuta.</pre>
+<p>La siguiente sesión incorporará las operaciones pendientes y su confirmación desde Telegram. Allí comprobaremos el flujo completo con varias personas.</p></div>
+<div><p class="example-title">Resultado de «Reserva un corte para Laura»</p><div class="result result-compact" id="salida-alcance">Reconocí esta solicitud:
+{
+  "accion": "crear",
+  "cliente": "Laura",
+  "servicio": "corte",
+  "fecha": "2026-10-27",
+  "hora": "10:00",
+  "codigo": ""
+}
+Esta versión de Telegram solo atiende consultas. La operación no se ejecutó y aquí todavía no hay un comando para confirmarla.</div><p class="mode">Se reconoció el plan. La operación quedó sin ejecutar y no se llamó una ruta de escritura.</p></div></div>
+</section>
+
+<section id="registro" class="compact">
+<h2>Registramos los comandos antes del texto general</h2>
+<p>Los manejadores de este archivo están en el mismo grupo. La biblioteca utiliza el primero de ese grupo que coincide con el evento. Registramos los comandos conocidos y después las rutas generales.</p>
+<pre class="code">privado = filters.ChatType.PRIVATE
+aplicacion.add_handler(CommandHandler("start", iniciar, filters=privado))
+aplicacion.add_handler(CommandHandler("help", ayuda, filters=privado))
+aplicacion.add_handler(CommandHandler("reset", reiniciar, filters=privado))
+aplicacion.add_handler(MessageHandler(
+    privado &amp; filters.TEXT &amp; ~filters.COMMAND, recibir_texto
+))
+aplicacion.add_handler(MessageHandler(
+    privado &amp; filters.COMMAND, comando_desconocido
+))</pre>
+<p class="small">El filtro de preguntas excluye comandos. Un <code>/help</code> válido se atiende en <code>ayuda()</code>. Un comando no registrado recibe la orientación del manejador general.</p>
+<aside class="notes">Fuente: https://docs.python-telegram-bot.org/en/stable/telegram.ext.application.html#telegram.ext.Application.add_handler</aside>
+</section>
+
+<section id="arranque" class="compact">
+<h2>Application reúne la configuración y comienza el ciclo</h2>
+<p>Al iniciar creamos la aplicación con el token, asignamos la configuración del modelo y registramos las funciones. Después <code>run_polling()</code> mantiene el proceso recogiendo mensajes hasta que lo detenemos.</p>
+<pre class="code">aplicacion = Application.builder().token(token).build()
+aplicacion.bot_data["clave_modelo"] = clave
+aplicacion.bot_data["modelo"] = modelo
+
+registrar_handlers(aplicacion)
+aplicacion.run_polling(allowed_updates=["message"])</pre>
+<p>En esta versión recogemos mensajes nuevos. Las ediciones de mensajes no se tratan como nuevas solicitudes. El archivo también registra una función para identificar errores sin imprimir la credencial.</p>
+<p class="note">La terminal permanece abierta durante las pruebas. Para detener el proceso utilizamos <code>Ctrl+C</code>.</p>
+</section>
+
+<section id="iniciar-real" class="compact">
+<h2>Ahora iniciamos el bot real del equipo</h2>
+<p>Primero encendemos FastAPI desde su carpeta. Después abrimos otra terminal, configuramos el modelo y la dirección de la API, y ejecutamos <code>bot_telegram.py</code>.</p>
+<pre class="code" id="cmd-real"># Terminal de FastAPI, desde la carpeta de main.py
+.\.venv\Scripts\python.exe -m uvicorn main:app --reload --port 8011
+
+# Otra terminal, desde la carpeta de bot_telegram.py
+# Configurar antes CHATBOT_API_URL, GROQ_API_KEY y GROQ_MODEL.
+.\.venv\Scripts\python.exe bot_telegram.py</pre>
+<button data-copy="cmd-real">Copiar comandos</button>
+<p>El bot solicitará el token si aún no está configurado. Abran su conversación en Telegram y envíen <code>/start</code>. Luego prueben una consulta del negocio y comprueben la respuesta.</p>
+<p class="small">Ajusten la ruta del entorno, el nombre de la aplicación y el puerto a su proyecto. Para un token de Telegram mantengan un solo proceso de polling.</p>
+</section>
+
+<section id="prueba-real">
+<h2>Cómo comprobar la integración real</h2>
+<p>Una bienvenida demuestra que el comando está funcionando. Para comprobar el recorrido completo debemos enviar una consulta cuyo resultado dependa de FastAPI.</p>
+<table><thead><tr><th>Prueba en Telegram</th><th>Qué debemos observar</th></tr></thead><tbody><tr><td><code>/start</code> y <code>/help</code></td><td>Bienvenida y orientación del negocio.</td></tr><tr><td>Consulta del catálogo</td><td>Servicios y precios que coincidan con la API.</td></tr><tr><td>Disponibilidad en dos mensajes</td><td>Primero se pide la fecha y después se continúa la consulta.</td></tr><tr><td><code>/reset</code> y un dato suelto</td><td>El contexto previo deja de completar la solicitud.</td></tr><tr><td>Consulta con FastAPI detenida</td><td>Aviso de fallo al intentar acceder a los datos.</td></tr></tbody></table>
+<p class="small">Utilicen una fecha futura en que su negocio atienda. Al terminar la prueba de fallo, vuelvan a iniciar la API.</p>
+</section>
+
+<section id="diagnostico" class="compact">
+<h2>Diagnóstico de una consulta</h2>
+<table><thead><tr><th>Síntoma</th><th>Comprobación inicial</th></tr></thead><tbody><tr><td>No encuentra <code>telegram</code></td><td>La dependencia está instalada en el Python que ejecuta el bot.</td></tr><tr><td>El bot aparece, pero <code>/start</code> no responde</td><td>Proceso encendido, conexión con Telegram y token correcto.</td></tr><tr><td><code>InvalidToken</code> o <code>Conflict</code></td><td>Token correcto y un solo proceso de polling para ese bot.</td></tr><tr><td>Los comandos funcionan y las consultas fallan</td><td>Configuración del modelo, función reutilizada y dirección de FastAPI.</td></tr><tr><td>Falla la consulta al negocio</td><td>API encendida, rutas correctas y datos enviados según su contrato.</td></tr><tr><td>El resultado no llega al chat</td><td>Llamada de envío, tamaño de respuesta y error informado por Telegram.</td></tr></tbody></table>
+<p class="note">Registramos la etapa afectada y la clase del error. Las capturas de evidencia deben conservar las credenciales fuera de la imagen.</p>
+</section>
+
+<section id="implementacion" class="compact">
+<h2>Qué deben adaptar en el archivo entregado</h2>
+<table><thead><tr><th>Parte de bot_telegram.py</th><th>Trabajo del equipo</th></tr></thead><tbody><tr><td><code>BIENVENIDA</code> y <code>AYUDA</code></td><td>Escribir el nombre, el alcance y ejemplos reales de su negocio.</td></tr><tr><td>Import de <code>chatbot_memoria</code></td><td>Conectar las funciones anteriores. Adaptar los nombres si reorganizaron el proyecto.</td></tr><tr><td><code>formatear_resultado()</code></td><td>Presentar el catálogo y la disponibilidad según la estructura que devuelve su API.</td></tr><tr><td><code>recibir_texto()</code></td><td>Identificar dónde se toma la pregunta, se recupera el historial y se procesa el resultado.</td></tr><tr><td><code>registrar_handlers()</code> y <code>main()</code></td><td>Revisar filtros, configuración y arranque. Ejecutar el archivo con el entorno del proyecto.</td></tr></tbody></table>
+<a class="download" href="material/bot_telegram.py" download="">Descargar bot_telegram.py</a><a class="download secondary" href="material/Laboratorio_Clase_11_12.md" download="">Descargar guía del laboratorio</a>
+</section>
+
+<section id="laboratorio">
+<h2>Laboratorio del equipo</h2>
+<p>Conecten el bot de su negocio con las funciones del proyecto. La persona debe poder iniciar la conversación, consultar datos reales y completar una consulta en otro mensaje.</p>
+<ol><li>Registren el bot y adapten la bienvenida y la ayuda.</li><li>Añadan el archivo entregado, instalen la dependencia y revisen los imports.</li><li>Inicien FastAPI y el proceso de Telegram con la configuración del equipo.</li><li>Prueben comandos, catálogo y disponibilidad. Comparen los resultados con la API.</li><li>Comprueben reinicio, comando desconocido y una consulta con la API detenida.</li></ol>
+<p class="note">Cada integrante debe localizar el handler de entrada y explicar la llamada al módulo anterior. El resultado de hoy es una consulta real desde Telegram hasta los datos del negocio.</p>
+</section>
+
+<section id="evidencias">
+<h2>Qué debe quedar al terminar</h2>
+<p>Actualicen el repositorio con <code>bot_telegram.py</code>, sus dependencias y las instrucciones para ejecutarlo. Incluyan el enlace público del bot y expliquen qué proceso debe permanecer encendido durante la demostración.</p>
+<p>En la bitácora registren el recorrido de una consulta: evento recibido, handler seleccionado, función reutilizada y respuesta enviada. Añadan un problema de integración y cómo lo resolvieron o qué falta por resolver.</p>
+<p class="note">Las evidencias deben mostrar los comandos funcionando, una consulta real contrastada con FastAPI y una consulta que continúa en otro turno. En la explicación deben poder identificar qué añadió el canal y qué parte del proyecto se reutilizó.</p>
+<a class="download" href="material/Clase_11_12_Estudiantes.zip" download="">Descargar material del laboratorio</a>
+</section>
+
+</div></div>
+<script src="assets/reveal.js"></script>
+
+
+<script>
+Reveal.initialize({hash:true,controls:true,progress:true,center:false,width:1280,height:720,margin:.04,slideNumber:'c/t'});
+document.querySelectorAll('button[data-copy]').forEach(boton => boton.addEventListener('click', async () => {
+  try {
+    await navigator.clipboard.writeText(document.getElementById(boton.dataset.copy).textContent);
+    const etiqueta = boton.textContent;
+    boton.textContent = 'Copiado';
+    setTimeout(() => boton.textContent = etiqueta, 1400);
+  } catch(e) { boton.textContent = 'Selecciona el texto para copiarlo'; }
+}));
+</script></body></html>

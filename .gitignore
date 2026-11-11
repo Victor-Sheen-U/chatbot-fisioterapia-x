@@ -48,7 +48,12 @@ ENV*/
 *.rar
 *.7z
 *.bak
+*.backup*
 remover_backup/
+reservas_practica*.db
+reservas_test*.db
+*.db-journal
+*.db-wal
 
 # IDEs y editores
 .vscode/

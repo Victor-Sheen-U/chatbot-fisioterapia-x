@@ -3,8 +3,8 @@
 ## 1. Identificación del proyecto
 
 - **Nombre del proyecto:** VLFisioterapia · Centro Integral de Fisioterapia y Rehabilitación (Armenia, Quindío — datos ficticios).
-- **Propósito:** Asistente conversacional para una clínica de fisioterapia que permite a los pacientes consultar tratamientos, tarifas y disponibilidad por especialista, así como agendar, consultar, reprogramar y cancelar citas médicas en varios turnos de conversación con confirmación explícita y persistencia relacional en SQLite.
-- **Curso y periodo:** Electiva 2 (Creación de Chatbots) · Periodo EAM-2026II · Entrega del Segundo Corte.
+- **Propósito:** Asistente conversacional omnicanal para una clínica de fisioterapia que permite a los pacientes consultar tratamientos, tarifas y disponibilidad por especialista, así como agendar, consultar, reprogramar y cancelar citas médicas tanto desde la web (Gradio 6) como desde Telegram Messenger, con confirmación explícita mediante botones, control estricto de propiedad e idempotencia, y persistencia relacional en SQLite.
+- **Curso y periodo:** Electiva 2 (Creación de Chatbots) · Periodo EAM-2026II · Tercer Corte (Clase 13).
 - **Equipo:** `Equipo_Sheen_castaneda_vargas`
   - **Victor Sheen Arias Zuleta** — Cabecilla / Arquitecto (integración con Groq, memoria conversacional, diseño de `AgendaSQLite` y orquestación en Gradio).
   - **Valentín Castañeda Marín** — Observadora / QA (diseño de casos de prueba multi-turno, validación de cruces de agenda por profesional, concurrencia y documentación de evidencias).
@@ -21,38 +21,37 @@
 ### Diagrama de arquitectura en texto
 
 ```text
++------------------------------------+   +------------------------------------+
+| 1A. INTERFAZ WEB — Gradio 6        |   | 1B. CANAL TELEGRAM — python-tg-bot |
+|     (app_gradio.py, puerto 7860)   |   |     (bot_telegram.py, Long Polling)|
+|     • Estado de sesión gr.State    |   |     • Botones Confirmar / Descartar|
++-----------------+------------------+   +-----------------+------------------+
+                  |                                        |
+                  | enviar()                               | ClienteAPI (X-API-Key,
+                  v                                        |  X-Telegram-User)
++------------------------------------+                     |
+| 2. MEMORIA Y CLIENTE LLM           |                     |
+|    (chatbot_memoria / consulta_llm)|                     |
+|    • Groq API (GPT-OSS-120B)       |                     |
++-----------------+------------------+                     |
+                  |                                        |
+                  | Petición REST                          |
+                  +-------------------+--------------------+
+                                      |
+                                      v
 +-------------------------------------------------------------------------+
-| 1. INTERFAZ WEB CONVERSACIONAL — Gradio 6 (app_gradio.py, puerto 7860)  |
-|    • Estado aislado por sesión de navegador con gr.State(nuevo_estado)  |
-|    • Botones: Enviar | Confirmar operación | Descartar | Reiniciar      |
+| 3. API DEL NEGOCIO — FastAPI (main.py, puerto 8012)                     |
+|    • /servicios, /disponibilidad, /citas, /citas/{codigo}               |
+|    • Router /telegram: /servicios, /disponibilidad, /reservas,          |
+|      /operaciones (atómico + idempotente)                               |
 +------------------------------------+------------------------------------+
                                      |
-                                     | enviar(mensaje, estado)
-                                     v
-+-------------------------------------------------------------------------+
-| 2. MEMORIA Y CLIENTE LLM — Python (chatbot_memoria.py + consulta_llm.py)|
-|    • Acumula historial [system, user, assistant] por sesión             |
-|    • Envía POST a https://api.groq.com/openai/v1/chat/completions       |
-|    • Extrae el plan JSON: {accion, cliente, servicio, fecha, hora, ...} |
-|    • Retiene acciones de escritura en pendiente hasta confirmar=True    |
-+------------------------------------+------------------------------------+
-                                     |
-                                     | Petición HTTP REST (urllib)
-                                     v
-+-------------------------------------------------------------------------+
-| 3. API DEL NEGOCIO — FastAPI + Pydantic v2 (main.py, puerto 8012)       |
-|    • GET /servicios, GET /disponibilidad, POST /citas,                  |
-|      GET /citas/{codigo}, PATCH /citas/{codigo}/reprogramar,            |
-|      DELETE /citas/{codigo}?confirmado=true                             |
-|    • Traduce errores del dominio a HTTP 400, 404, 409, 422 y 503        |
-+------------------------------------+------------------------------------+
-                                     |
-                                     | AgendaSQLite (almacen_sqlite.py)
+                                     | AgendaTelegram (api_telegram.py)
                                      v
 +-------------------------------------------------------------------------+
 | 4. PERSISTENCIA RELACIONAL — SQLite (reservas.db + clinica.json)        |
-|    • Tabla `reservas` (16 columnas) + transacciones `BEGIN IMMEDIATE`   |
-|    • Valida horarios por día, duración (45/60 min) y cruces por fisio   |
+|    • Tablas: `reservas`, `propietarios_telegram`, `operaciones_telegram`|
+|    • Transacciones `BEGIN IMMEDIATE` + `SAVEPOINT` + huella SHA-256     |
 +-------------------------------------------------------------------------+
 ```
 
@@ -60,43 +59,54 @@
 
 ## 3. Estructura del repositorio
 
-Todos los comandos de preparación, pruebas, servidor FastAPI e interfaz Gradio **se ejecutan desde la carpeta raíz del repositorio**.
+Todos los comandos de preparación, pruebas, servidor FastAPI, Gradio y Telegram **se ejecutan desde la carpeta raíz del repositorio**.
 
 ```text
 chatbot-fisioterapia/
 ├── README.md                        # Guía de instalación, configuración, ejecución y verificación
-├── requirements.txt                 # Dependencias de Python (FastAPI, Uvicorn, Gradio 6, Httpx, Pydantic, Tzdata)
-├── .gitignore                       # Exclusión de entorno virtual, caché, respaldos y archivo .env
+├── requirements.txt                 # Dependencias (FastAPI, Uvicorn, Gradio 6, Httpx, Pydantic, python-telegram-bot)
+├── requirements_telegram.txt        # Dependencias secundarias específicas de Telegram
+├── .gitignore                       # Exclusión de entorno virtual, caché, respaldos, temporales y archivo .env
 ├── .env.example                     # Plantilla de variables de entorno (sin credenciales reales)
-├── main.py                          # Servidor FastAPI con endpoints del negocio y validación Pydantic
+├── main.py                          # Servidor FastAPI principal con endpoints del negocio y router /telegram
+├── api_telegram.py                  # Clase AgendaTelegram, control de propiedad, idempotencia y router /telegram
+├── bot_telegram.py                  # Adaptador de Telegram con polling, comandos, botones inline y cliente HTTP
+├── simular_respuesta_perdida.py     # Simulador de timeout tras persistir para prueba T24
 ├── app_gradio.py                    # Interfaz web en Gradio 6 con estado por sesión y botones de control
 ├── consulta_llm.py                  # Cliente HTTP hacia Groq y ejecutor de planes contra FastAPI
 ├── chatbot_memoria.py               # Gestión del historial multi-turno [system, user, assistant]
 ├── almacen_sqlite.py                # Clase AgendaSQLite: persistencia, disponibilidad y cruces en SQLite
 ├── clinica.json                     # Catálogo del negocio (6 servicios, 3 fisioterapeutas, horarios y FAQ)
-├── reservas.db                      # Base de datos SQLite con 5 reservas ficticias de prueba
+├── reservas.db                      # Base de datos SQLite con citas, propietarios y operaciones
 ├── preparar_datos_prueba.py         # Script idempotente para crear o reiniciar las reservas ficticias
 ├── probar_fisioterapia.py           # Suite de pruebas automáticas con TestClient y SQLite temporal
+├── test_telegram.py                 # Suite de pruebas automatizadas del canal Telegram (T01 a T25)
 ├── test_integracion_completa.py     # Script de prueba de integración extremo a extremo con Groq real
 └── docs/
+    ├── clase_13/                    # Documentación y evidencias del Tercer Corte (Clase 13)
+    │   ├── GUIA_DEL_PROYECTO.md       # Explicación sencilla e integral de arquitectura y negocio
+    │   ├── CONFIGURACION_TELEGRAM.md  # Manual paso a paso para BotFather, claves, .env y ejecución
+    │   ├── Matriz_25_Pruebas.md       # Matriz detallada de escenarios T01–T25 y registros de fallos
+    │   ├── Bitacora_Clase_13.md       # Bitácora formal de la sesión siguiendo el estándar del curso
+    │   └── evidencias/                # Salidas reales sanitizadas de pruebas automatizadas y rutas
     ├── Bitacora_Segundo_Corte.md    # Documentación técnica integral del Segundo Corte
     ├── Presentacion_Segundo_Corte.pdf # Presentación ejecutiva y técnica del proyecto
     ├── bitacoras_previas/           # Bitácoras de seguimiento de las sesiones C01 a C04
-    └── evidencias/                  # Salidas reales de pruebas (.txt) y capturas de pantalla (.png)
+    └── evidencias/                  # Salidas de pruebas del segundo corte
 ```
 
 ---
 
 ## 4. Requisitos e instalación
 
-- **Versión de Python verificada:** Python `3.13.9` (compatible con **Python 3.11 o superior**, requerido por `gradio>=6,<7` y `zoneinfo`).
-- **Dependencias (`requirements.txt`):** `fastapi==0.115.12`, `uvicorn==0.34.2`, `httpx==0.28.1`, `tzdata>=2025.2`, `pydantic>=2.10.0`, `gradio>=6,<7`.
+- **Versión de Python verificada:** Python `3.13.9` (compatible con **Python 3.11 o superior**, requerido por `gradio>=6,<7`, `python-telegram-bot>=22,<23` y `zoneinfo`).
+- **Dependencias (`requirements.txt`):** `fastapi==0.115.12`, `uvicorn==0.34.2`, `httpx==0.28.1`, `tzdata>=2025.2`, `pydantic>=2.10.0`, `gradio>=6,<7`, `python-telegram-bot>=22,<23`.
 
 ### Opción A: Linux / macOS (bash)
 
 ```bash
 # 1. Ubicarse en la raíz del repositorio
-cd chatbot-fisioterapia
+cd chatbot-fisioterapia-x
 
 # 2. Crear y activar el entorno virtual
 python3 -m venv .venv
@@ -111,7 +121,7 @@ pip install -r requirements.txt
 
 ```powershell
 # 1. Ubicarse en la raíz del repositorio
-cd chatbot-fisioterapia
+cd chatbot-fisioterapia-x
 
 # 2. Crear y activar el entorno virtual
 python -m venv .venv
@@ -126,29 +136,33 @@ pip install -r requirements.txt
 
 ## 5. Configuración de variables de entorno
 
-El sistema lee las variables desde el entorno o desde un archivo `.env` en la raíz (cargado automáticamente por `cargar_env()` en [`consulta_llm.py`](consulta_llm.py)).
+El sistema lee las variables desde el entorno o desde un archivo `.env` en la raíz (cargado automáticamente por `cargar_env()` en [`consulta_llm.py`](consulta_llm.py) y [`bot_telegram.py`](bot_telegram.py)).
 
-> **Advertencia de seguridad:** Nunca publiques tu archivo `.env` ni expongas tu clave `GROQ_API_KEY` en repositorios públicos, capturas de pantalla o documentos. El archivo `.gitignore` ya excluye `.env`.
+> **Advertencia de seguridad:** Nunca publiques tu archivo `.env` ni expongas tus tokens o claves privadas (`TELEGRAM_BOT_TOKEN`, `CHATBOT_API_KEY`, `GROQ_API_KEY`) en repositorios públicos, capturas de pantalla o documentos. El archivo `.gitignore` ya excluye `.env`.
 
 | Variable | Valor por defecto / Ejemplo | Descripción |
 |---|---|---|
+| `TELEGRAM_BOT_TOKEN` | *(obtenido de @BotFather)* | Token secreto de acceso HTTP del bot de Telegram. |
+| `CHATBOT_API_KEY` | *(mínimo 16 caracteres ASCII)* | Clave privada compartida para autenticar peticiones entre el bot y FastAPI. |
+| `CHATBOT_API_URL` | `http://127.0.0.1:8012` | Dirección base donde escucha la API de FastAPI. |
 | `GROQ_API_KEY` | *(obligatoria para el chat)* | Clave de API obtenida en [console.groq.com](https://console.groq.com). |
 | `GROQ_MODEL` | `openai/gpt-oss-120b` | Identificador del modelo de lenguaje en Groq. |
-| `CHATBOT_API_URL` | `http://127.0.0.1:8012` | Dirección base donde escucha la API de FastAPI. |
-| `PORT` / `HOST` | `8012` / `127.0.0.1` | Opcionales al ejecutar `python main.py` directamente. |
+| `PORT` / `HOST` | `8012` / `127.0.0.1` | Host y puerto locales de ejecución de FastAPI. |
 
 ### Crear el archivo `.env`
 
 **Linux / macOS (bash):**
 ```bash
 cp .env.example .env
-# Edita .env y reemplaza tu_clave_de_groq_aqui por tu clave real de Groq
+chmod 600 .env
+# Generar CHATBOT_API_KEY con: python3 -c 'import secrets; print(secrets.token_urlsafe(32))'
+# Editar .env y colocar token de BotFather, CHATBOT_API_KEY y GROQ_API_KEY
 ```
 
 **Windows (PowerShell):**
 ```powershell
 Copy-Item .env.example .env
-# Abre .env en el bloc de notas o editor y coloca tu clave real en GROQ_API_KEY
+# Abrir .env y configurar las variables correspondientes
 ```
 
 También puedes exportar las variables directamente en la terminal antes de iniciar `app_gradio.py` (ver sección siguiente).
@@ -206,50 +220,53 @@ Abre una **segunda terminal** en la raíz del proyecto:
 **Linux / macOS (bash):**
 ```bash
 source .venv/bin/activate
-export GROQ_API_KEY="tu_clave_de_groq_aqui"
-export GROQ_MODEL="openai/gpt-oss-120b"
-export CHATBOT_API_URL="http://127.0.0.1:8012"
-python app_gradio.py
-```
-*(Si ya configuraste `.env`, `consulta_llm.py` carga el archivo automáticamente, pero `app_gradio.py` lee `GROQ_API_KEY` y `GROQ_MODEL` de `os.getenv` al importarse tras importar `consulta_llm`.)*
-
-**Windows (PowerShell):**
-```powershell
-.\.venv\Scripts\Activate.ps1
-$env:GROQ_API_KEY="tu_clave_de_groq_aqui"
-$env:GROQ_MODEL="openai/gpt-oss-120b"
-$env:CHATBOT_API_URL="http://127.0.0.1:8012"
 python app_gradio.py
 ```
 
 - Interfaz web del chatbot en Gradio: `http://127.0.0.1:7860`
 
+### Paso 4: Iniciar el canal de Telegram (Terminal 3)
+
+Abre una **tercera terminal** en la raíz del proyecto:
+
+**Linux / macOS (bash):**
+```bash
+source .venv/bin/activate
+python bot_telegram.py
+```
+*(Requiere `TELEGRAM_BOT_TOKEN` y `CHATBOT_API_KEY` configurados en `.env`. Ver detalles en [`docs/clase_13/CONFIGURACION_TELEGRAM.md`](docs/clase_13/CONFIGURACION_TELEGRAM.md)).*
+
 ---
 
 ## 7. Comprobación del funcionamiento
 
-### 7.1 Prueba rápida de la API (`GET /servicios`)
+### 7.1 Prueba rápida de la API (`GET /servicios` y `/telegram/servicios`)
 
 Con FastAPI encendida en el puerto `8012`, ejecuta en otra terminal:
 
 ```bash
+# Catálogo general
 curl http://127.0.0.1:8012/servicios
+
+# Catálogo protegido para Telegram (requiere X-API-Key)
+curl -H "X-API-Key: tu_chatbot_api_key" http://127.0.0.1:8012/telegram/servicios
 ```
 
 **Resultado esperado:** Un objeto JSON con las **6 claves de tratamientos** (`evaluacion`, `deportiva`, `traumatologica`, `puncion_seca`, `postural`, `neurologica`), incluyendo `nombre`, `precio_cop`, `duracion_minutos` (60 o 45) y `descripcion`.
 
-### 7.2 Ejecución de la suite de pruebas automáticas
+### 7.2 Ejecución de las suites de pruebas automáticas
 
-No requiere clave de Groq ni servidor encendido (utiliza `TestClient` de FastAPI y una base SQLite temporal que no altera `reservas.db`):
+No requieren clave de Groq ni servidor encendido (utilizan `TestClient` de FastAPI y una base SQLite temporal que no altera `reservas.db`):
 
 ```bash
+# 1. Pruebas unitarias de agenda, disponibilidad y SQLite
 python probar_fisioterapia.py
-```
 
-**Salida real esperada:**
-```text
-Iniciando pruebas de VLFisioterapia...
-Todas las pruebas pasaron satisfactoriamente (100% OK).
+# 2. Pruebas completas del canal Telegram (T01 a T25: autenticación, propiedad, concurrencia, idempotencia)
+python test_telegram.py
+
+# 3. Prueba de integración con Groq real (opcional, requiere GROQ_API_KEY en .env)
+python test_integracion_completa.py
 ```
 
 ### 7.3 Recorrido corto en Gradio y verificación en SQLite
@@ -270,29 +287,27 @@ python -c "import sqlite3; con=sqlite3.connect('reservas.db'); print(con.execute
 
 | Síntoma / Mensaje de error | Causa probable | Solución |
 |---|---|---|
-| `ModuleNotFoundError: No module named '_sqlite3'` | El intérprete de Python con el que se creó el entorno virtual fue compilado desde código fuente sin las cabeceras de desarrollo de SQLite. | En Fedora Linux: instala `sudo dnf install sqlite-devel` y recompila/reinstala ese Python (p. ej. con `pyenv` o `asdf`), o crea el `.venv` usando el Python del sistema (`/usr/bin/python3 -m venv .venv`). |
-| `ERROR: [Errno 98] Address already in use` (puerto 8012 o 7860) | Ya hay otra instancia de Uvicorn o Gradio ejecutándose en ese puerto. | Detén el proceso anterior (`pkill -f "uvicorn main:app"` o cierra la terminal previa) o cambia el puerto actualizando también `CHATBOT_API_URL`. |
-| `Configura GROQ_API_KEY y GROQ_MODEL e inicia de nuevo.` | Las variables `GROQ_API_KEY` o `GROQ_MODEL` están vacías en `.env` y no fueron exportadas en la terminal antes de iniciar `app_gradio.py`. | Completa `.env` con valores válidos (sin dejar vacíos) o expórtalas en la terminal y reinicia `python app_gradio.py`. |
-| `Error HTTP 401. Revisa Groq o FastAPI.` / `Error HTTP 429` | En `401`: la clave `GROQ_API_KEY` es inválida o expiró. En `429`: se alcanzó el límite de peticiones por minuto de la cuenta de Groq. | Verifica tu clave en la consola de Groq o espera unos segundos antes de enviar otro turno. |
-| `No pude conectar con Groq o FastAPI.` | El servidor FastAPI (`main.py`) está apagado, escucha en un puerto distinto a `CHATBOT_API_URL`, o no hay salida a internet hacia `api.groq.com`. | Confirma que la Terminal 1 tenga `uvicorn main:app --port 8012` activo y que `CHATBOT_API_URL=http://127.0.0.1:8012`. |
-| `TypeError: Chatbot.__init__() got an unexpected keyword argument 'buttons'` | Se instaló una versión antigua de Gradio (Gradio 4 o 5) en lugar de Gradio 6. | Ejecuta `pip install "gradio>=6,<7"` dentro del entorno virtual activo. |
+| `HTTP 401: Acceso del servicio no autorizado` | La cabecera `X-API-Key` del bot no coincide con `CHATBOT_API_KEY` en FastAPI. | Asegurar que `CHATBOT_API_KEY` sea idéntica en `.env` para ambos procesos. |
+| `HTTP 503: Canal Telegram deshabilitado` | `CHATBOT_API_KEY` no fue definida en el entorno al iniciar FastAPI. | Configurar una clave de al menos 16 caracteres ASCII en `.env` y reiniciar `uvicorn`. |
+| `ModuleNotFoundError: No module named 'telegram'` | No se instaló la biblioteca `python-telegram-bot`. | Ejecutar `pip install -r requirements.txt` dentro del entorno virtual `.venv`. |
+| `Conflict: terminated by other getUpdates request` | Hay dos procesos del bot corriendo simultáneamente con el mismo token. | Detén cualquier otro script de `bot_telegram.py` o simulador antes de volver a arrancar. Solo se permite un proceso de polling por token. |
+| `Reserva no disponible para este usuario (404)` | Estás intentando consultar una cita creada por otra persona o una cita histórica de Gradio. | Solo puedes consultar citas creadas desde tu misma cuenta de Telegram. Crea una nueva cita para probar. |
+| `La reserva cambió. Consúltala y prepara otro resumen (409)` | La cita fue alterada en la base de datos entre el momento en que pediste reprogramar y el clic en Confirmar. | Vuelve a consultar la cita con `/reserva CODIGO` y prepara una nueva propuesta con la referencia actualizada. |
 
 ---
 
-## 9. Documentación y evidencias del Segundo Corte
+## 9. Documentación y entregables del proyecto
 
-Todos los documentos describen la misma versión del sistema (FastAPI en puerto `8012`, Gradio en puerto `7860` y persistencia en `reservas.db`):
+### Documentación del Tercer Corte (Clase 13 - Canal Telegram)
+- **Guía Integral del Proyecto:** [`docs/clase_13/GUIA_DEL_PROYECTO.md`](docs/clase_13/GUIA_DEL_PROYECTO.md) — Explicación sencilla, arquitectura, límites clínicos, flujo y componentes.
+- **Manual de Configuración de Telegram:** [`docs/clase_13/CONFIGURACION_TELEGRAM.md`](docs/clase_13/CONFIGURACION_TELEGRAM.md) — Paso a paso para BotFather, `CHATBOT_API_KEY`, `.env` y arranque en Linux/Fedora.
+- **Matriz de Pruebas T01–T25:** [`docs/clase_13/Matriz_25_Pruebas.md`](docs/clase_13/Matriz_25_Pruebas.md) — Resultados detallados de los 25 escenarios, condiciones, evidencias y correcciones.
+- **Bitácora de la Clase 13:** [`docs/clase_13/Bitacora_Clase_13.md`](docs/clase_13/Bitacora_Clase_13.md) — Bitácora formal estructurada según el modelo del curso.
+- **Evidencias de ejecución:** [`docs/clase_13/evidencias/`](docs/clase_13/evidencias/) — Registros de pruebas automatizadas y rutas OpenAPI.
 
+### Documentación del Segundo Corte (Gradio, SQLite y Especialistas)
 - **Bitácora integral del Segundo Corte:** [`docs/Bitacora_Segundo_Corte.md`](docs/Bitacora_Segundo_Corte.md)
 - **Presentación del Segundo Corte (PDF):** [`docs/Presentacion_Segundo_Corte.pdf`](docs/Presentacion_Segundo_Corte.pdf)
-- **Carpeta de evidencias (pruebas `.txt` y capturas `.png`):** [`docs/evidencias/`](docs/evidencias/)
-  - [`01_api_servicios_y_disponibilidad.txt`](docs/evidencias/01_api_servicios_y_disponibilidad.txt)
-  - [`02_crear_modificar_cancelar.txt`](docs/evidencias/02_crear_modificar_cancelar.txt)
-  - [`03_intervalo_ocupado_409.txt`](docs/evidencias/03_intervalo_ocupado_409.txt)
-  - [`04_cancelacion_y_persistencia.txt`](docs/evidencias/04_cancelacion_y_persistencia.txt)
-  - [`05_pruebas_automaticas_antes.txt`](docs/evidencias/05_pruebas_automaticas_antes.txt) y [`05b_pruebas_automaticas_despues.txt`](docs/evidencias/05b_pruebas_automaticas_despues.txt)
-  - [`06_errores_controlados.txt`](docs/evidencias/06_errores_controlados.txt)
-  - [`07_sesiones_y_reinicio_simulado.txt`](docs/evidencias/07_sesiones_y_reinicio_simulado.txt)
 - **Bitácoras previas de seguimiento por clase:** [`docs/bitacoras_previas/`](docs/bitacoras_previas/)
   - [`C01_2026-08-31_Fisioterapia.md`](docs/bitacoras_previas/C01_2026-08-31_Fisioterapia.md)
   - [`C02_2026-09-07_Fisioterapia.md`](docs/bitacoras_previas/C02_2026-09-07_Fisioterapia.md)
